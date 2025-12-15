@@ -3,6 +3,17 @@ set -e
 
 echo "🚀 Starting application entrypoint..."
 
+# Fix permissions if running as root
+if [ "$(id -u)" = "0" ]; then
+    echo "🔧 Fixing permissions for volumes..."
+    mkdir -p /app/public/uploads /app/logs /app/backups/database
+    chown -R nextjs:nodejs /app/public/uploads /app/logs /app/backups
+    
+    # Re-execute script as nextjs user
+    echo "🔄 Switching to nextjs user..."
+    exec su-exec nextjs "$0" "$@"
+fi
+
 # Run Prisma migrations
 echo "🔄 Running Prisma migrations..."
 LOG_FILE=$(mktemp)

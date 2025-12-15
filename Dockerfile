@@ -67,8 +67,8 @@ RUN npm run build
 FROM node:25-alpine AS runner
 WORKDIR /app
 
-# Install PostgreSQL client tools for backup/restore
-RUN apk add --no-cache postgresql16-client
+# Install PostgreSQL client tools for backup/restore and su-exec for user switching
+RUN apk add --no-cache postgresql16-client su-exec
 
 # Set to production environment
 ENV NODE_ENV=production
@@ -97,11 +97,8 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 
 # Create directories for logs and backups
-RUN mkdir -p /app/logs /app/backups/database && \
-    chown -R nextjs:nodejs /app/logs /app/backups
-
-# Switch to non-root user
-USER nextjs
+RUN mkdir -p /app/logs /app/backups/database /app/public/uploads && \
+    chown -R nextjs:nodejs /app/logs /app/backups /app/public/uploads
 
 # Expose port
 EXPOSE 3000
