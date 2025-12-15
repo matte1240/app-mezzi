@@ -1,8 +1,14 @@
 -- CreateEnum
-CREATE TYPE "VehicleStatus" AS ENUM ('ACTIVE', 'MAINTENANCE', 'OUT_OF_SERVICE');
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'VehicleStatus') THEN
+        CREATE TYPE "VehicleStatus" AS ENUM ('ACTIVE', 'MAINTENANCE', 'OUT_OF_SERVICE');
+    END IF;
+END
+$$;
 
 -- CreateTable
-CREATE TABLE "Vehicle" (
+CREATE TABLE IF NOT EXISTS "Vehicle" (
     "id" TEXT NOT NULL,
     "plate" TEXT NOT NULL,
     "name" TEXT NOT NULL,
@@ -16,4 +22,4 @@ CREATE TABLE "Vehicle" (
 );
 
 -- CreateIndex
-CREATE UNIQUE INDEX "Vehicle_plate_key" ON "Vehicle"("plate");
+CREATE UNIQUE INDEX IF NOT EXISTS "Vehicle_plate_key" ON "Vehicle"("plate");

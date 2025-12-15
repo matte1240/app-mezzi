@@ -2,21 +2,21 @@ services:
   # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
-    container_name: employee-tracker-db
+    container_name: app-mezzi-db
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-app}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-SecureDockerPassword123}
-      POSTGRES_DB: ${POSTGRES_DB:-employee_tracker}
+      POSTGRES_DB: ${POSTGRES_DB:-app_mezzi}
     ports:
       - "${DB_PORT:-5433}:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - app_backups:/backups
+      - app-mezzi-db-data:/var/lib/postgresql/data
+      - app-mezzi-backups:/backups
     networks:
-      - employee-tracker-network
+      - app-mezzi-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-app} -d ${POSTGRES_DB:-employee_tracker}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-app} -d ${POSTGRES_DB:-app_mezzi}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -24,14 +24,14 @@ services:
   # Next.js Application
   app:
     image: ghcr.io/matte1240/app-mezzi:${TAG:-latest}
-    container_name: employee-tracker-app
+    container_name: app-mezzi-app
     restart: unless-stopped
     depends_on:
       postgres:
         condition: service_healthy
     environment:
       # Database
-      DATABASE_URL: postgresql://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-SecureDockerPassword123}@postgres:5432/${POSTGRES_DB:-employee_tracker}?schema=public
+      DATABASE_URL: postgresql://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-SecureDockerPassword123}@postgres:5432/${POSTGRES_DB:-app_mezzi}?schema=public
       
       # NextAuth
       NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
@@ -44,7 +44,7 @@ services:
       EMAIL_HOST: ${EMAIL_HOST:-smtp.gmail.com}
       EMAIL_USER: ${EMAIL_USER:-}
       EMAIL_PASSWORD: ${EMAIL_PASSWORD:-}
-      EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-Time Tracker}
+      EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-App Mezzi}
       
       # Backup Configuration
       BACKUP_CRON_SCHEDULE: ${BACKUP_CRON_SCHEDULE:-0 2 * * *}
@@ -57,23 +57,23 @@ services:
     ports:
       - "${APP_PORT:-3001}:3000"
     volumes:
-      - app_logs:/app/logs
-      - app_backups:/app/backups/database
-      - app_uploads:/app/public/uploads
+      - app-mezzi-logs:/app/logs
+      - app-mezzi-backups:/app/backups/database
+      - app-mezzi-uploads:/app/public/uploads
     networks:
-      - employee-tracker-network
+      - app-mezzi-network
 
 networks:
-  employee-tracker-network:
+  app-mezzi-network:
     driver: bridge
 
 volumes:
-  postgres_data:
+  app-mezzi-db-data:
     driver: local
-  app_logs:
+  app-mezzi-logs:
     driver: local
-  app_backups:
+  app-mezzi-backups:
     driver: local
-  app_uploads:
+  app-mezzi-uploads:
     driver: local
 
