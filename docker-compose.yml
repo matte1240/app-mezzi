@@ -9,7 +9,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-SecureDockerPassword123}
       POSTGRES_DB: ${POSTGRES_DB:-employee_tracker}
     ports:
-      - "${DB_PORT:-5432}:5432"
+      - "${DB_PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - app_backups:/backups
@@ -23,7 +23,7 @@ services:
 
   # Next.js Application
   app:
-    image: ghcr.io/matte1240/employee-app:${TAG:-latest}
+    image: ghcr.io/matte1240/app-mezzi:${TAG:-latest}
     container_name: employee-tracker-app
     restart: unless-stopped
     depends_on:
@@ -55,7 +55,7 @@ services:
       PORT: 3000
       HOSTNAME: "0.0.0.0"
     ports:
-      - "${APP_PORT:-3000}:3000"
+      - "${APP_PORT:-3001}:3000"
     volumes:
       - app_logs:/app/logs
       - app_backups:/app/backups/database

@@ -1,0 +1,387 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { format } from "date-fns";
+import { 
+  Wrench, 
+  Plus, 
+  AlertTriangle, 
+  CheckCircle, 
+  AlertCircle,
+  Loader2,
+  X,
+  Edit,
+  Trash2
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+
+type MaintenanceRecord = {
+  id: string;
+  date: string;
+  type: "TAGLIANDO" | "GOMME" | "MECCANICA" | "REVISIONE" | "ALTRO";
+  cost: number | null;
+  mileage: number;
+  notes: string | null;
+};
+
+type VehicleMaintenanceProps = {
+  vehicleId: string;
+  currentMileage: number;
+  serviceIntervalKm: number;
+  initialRecords: MaintenanceRecord[];
+};
+
+export default function VehicleMaintenance({ 
+  vehicleId, 
+  currentMileage, 
+  serviceIntervalKm, 
+  initialRecords 
+}: VehicleMaintenanceProps) {
+  const [records, setRecords] = useState<MaintenanceRecord[]>(initialRecords);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<MaintenanceRecord | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  // Calculate next service
+  const lastService = records.find(r => r.type === "TAGLIANDO");
+  const lastServiceKm = lastService ? lastService.mileage : 0;
+  const nextServiceKm = lastServiceKm + serviceIntervalKm;
+  const kmToNextService = nextServiceKm - currentMileage;
+  
+  // Determine status
+  let statusColor = "text-emerald-600 dark:text-emerald-400";
+  let statusBg = "bg-emerald-100 dark:bg-emerald-900/30";
+  let StatusIcon = CheckCircle;
+  let statusText = "Regolare";
+
+  if (kmToNextService < 0) {
+    statusColor = "text-destructive";
+    statusBg = "bg-destructive/10";
+    StatusIcon = AlertCircle;
+    statusText = "Scaduto";
+  } else if (kmToNextService < 1000) {
+    statusColor = "text-yellow-600 dark:text-yellow-400";
+    statusBg = "bg-yellow-100 dark:bg-yellow-900/30";
+    StatusIcon = AlertTriangle;
+    statusText = "In Scadenza";
+  }
+
+  // Form state
+  const [formData, setFormData] = useState({
+    date: format(new Date(), "yyyy-MM-dd"),
+    type: "TAGLIANDO",
+    cost: "",
+    mileage: currentMileage,
+    notes: ""
+  });
+
+  const resetForm = () => {
+    setFormData({
+      date: format(new Date(), "yyyy-MM-dd"),
+      type: "TAGLIANDO",
+      cost: "",
+      mileage: currentMileage,
+      notes: ""
+    });
+    setEditingRecord(null);
+    setError(null);
+  };
+
+  const openCreateModal = () => {
+    resetForm();
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (record: MaintenanceRecord) => {
+    setEditingRecord(record);
+    setFormData({
+      date: format(new Date(record.date), "yyyy-MM-dd"),
+      type: record.type as string,
+      cost: record.cost ? record.cost.toString() : "",
+      mileage: record.mileage,
+      notes: record.notes || ""
+    });
+    setIsModalOpen(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Sei sicuro di voler eliminare questo intervento?")) return;
+    
+    startTransition(async () => {
+      try {
+        const res = await fetch(`/api/maintenance/${id}`, {
+          method: "DELETE",
+        });
+
+        if (!res.ok) {
+          const data = await res.json();
+          alert(data.error || "Errore durante l'eliminazione");
+          return;
+        }
+
+        setRecords(prev => prev.filter(r => r.id !== id));
+      } catch (err) {
+        alert("Si è verificato un errore imprevisto");
+      }
+    });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    startTransition(async () => {
+      try {
+        const url = editingRecord 
+          ? `/api/maintenance/${editingRecord.id}`
+          : `/api/vehicles/${vehicleId}/maintenance`;
+        
+        const method = editingRecord ? "PUT" : "POST";
+
+        const res = await fetch(url, {
+          method,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...formData,
+            cost: formData.cost ? parseFloat(formData.cost) : undefined,
+            mileage: Number(formData.mileage)
+          }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          setError(data.error || "Errore durante il salvataggio");
+          return;
+        }
+
+        // Add new record or update existing and resort
+        const savedRecord = {
+            ...data,
+            date: data.date // Ensure date format matches
+        };
+        
+        setRecords(prev => {
+          const filtered = editingRecord ? prev.filter(r => r.id !== editingRecord.id) : prev;
+          return [savedRecord, ...filtered].sort((a, b) => 
+            new Date(b.date).getTime() - new Date(a.date).getTime()
+          );
+        });
+        
+        setIsModalOpen(false);
+        resetForm();
+      } catch (err) {
+        setError("Si è verificato un errore imprevisto");
+      }
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+          <Wrench className="h-5 w-5" />
+          Manutenzione
+        </h3>
+        <button
+          onClick={openCreateModal}
+          className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-sm transition hover:bg-primary/90"
+        >
+          <Plus className="h-4 w-4" />
+          Registra Intervento
+        </button>
+      </div>
+
+      {/* Status Card */}
+      <div className={cn("rounded-xl border p-6 flex items-center justify-between", statusBg, "border-transparent")}>
+        <div className="flex items-center gap-4">
+          <div className={cn("p-3 rounded-full bg-background/50", statusColor)}>
+            <StatusIcon className="h-6 w-6" />
+          </div>
+          <div>
+            <p className={cn("font-semibold", statusColor)}>Stato Manutenzione: {statusText}</p>
+            <p className="text-sm text-muted-foreground">
+              Prossimo tagliando tra <strong>{kmToNextService} km</strong> (a {nextServiceKm} km)
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* History List */}
+      <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-border">
+            <thead className="bg-muted/50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Data</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tipo</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Km</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Costo</th>
+                <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">Note</th>
+                <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">Azioni</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border bg-card">
+              {records.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="p-8 text-center text-muted-foreground">
+                    Nessun intervento registrato.
+                  </td>
+                </tr>
+              ) : (
+                records.map((record) => (
+                  <tr key={record.id} className="transition hover:bg-muted/50 group">
+                    <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-foreground">
+                      {format(new Date(record.date), "dd/MM/yyyy")}
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4">
+                      <span className="inline-flex rounded-full bg-secondary px-2.5 py-0.5 text-xs font-medium text-secondary-foreground">
+                        {record.type}
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-muted-foreground">
+                      {record.mileage} km
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-muted-foreground">
+                      {record.cost ? `€ ${Number(record.cost).toFixed(2)}` : "-"}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-muted-foreground max-w-xs truncate">
+                      {record.notes || "-"}
+                    </td>
+                    <td className="px-6 py-4 text-right text-sm font-medium">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => openEditModal(record)}
+                          className="p-2 text-muted-foreground hover:text-primary transition-colors"
+                          title="Modifica"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(record.id)}
+                          className="p-2 text-muted-foreground hover:text-destructive transition-colors"
+                          title="Elimina"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-md rounded-xl bg-card border border-border shadow-2xl">
+            <div className="border-b border-border bg-primary px-6 py-4 rounded-t-xl">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-primary-foreground">
+                  {editingRecord ? "Modifica Intervento" : "Registra Intervento"}
+                </h2>
+                <button
+                  onClick={() => setIsModalOpen(false)}
+                  className="rounded-lg p-1 text-primary-foreground/80 transition hover:bg-primary-foreground/20 hover:text-primary-foreground"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              {error && (
+                <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
+                  {error}
+                </div>
+              )}
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-foreground mb-2">Data</label>
+                  <input
+                    type="date"
+                    required
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+                    value={formData.date}
+                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-foreground mb-2">Tipo</label>
+                  <select
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+                    value={formData.type}
+                    onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                  >
+                    <option value="TAGLIANDO">Tagliando</option>
+                    <option value="GOMME">Gomme</option>
+                    <option value="MECCANICA">Meccanica</option>
+                    <option value="REVISIONE">Revisione</option>
+                    <option value="ALTRO">Altro</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-foreground mb-2">Km al momento</label>
+                  <input
+                    type="number"
+                    required
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+                    value={formData.mileage}
+                    onChange={(e) => setFormData({ ...formData, mileage: Number(e.target.value) })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-foreground mb-2">Costo (€)</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+                    value={formData.cost}
+                    onChange={(e) => setFormData({ ...formData, cost: e.target.value })}
+                    placeholder="0.00"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-2">Note</label>
+                <textarea
+                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm min-h-[80px]"
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  placeholder="Dettagli intervento..."
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="rounded-lg px-4 py-2 text-sm font-semibold text-muted-foreground hover:bg-muted"
+                >
+                  Annulla
+                </button>
+                <button
+                  type="submit"
+                  disabled={isPending}
+                  className="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                >
+                  {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                  Salva
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

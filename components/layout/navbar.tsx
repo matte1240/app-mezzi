@@ -6,16 +6,12 @@ import { useState, useTransition, useEffect } from "react";
 import { signOut } from "next-auth/react";
 import Image from "next/image";
 import {
-  LayoutDashboard,
-  Users,
-  Calendar,
-  FileText,
-  ClipboardList,
-  Server,
-  User,
   LogOut,
   Menu,
   X,
+  Truck,
+  Map,
+  Server,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -72,29 +68,14 @@ export default function Navbar({
 
   const adminLinks = [
     {
-      href: "/dashboard/admin",
-      label: "Overview",
-      icon: <LayoutDashboard className="w-4 h-4" />,
+      href: "/dashboard/vehicles",
+      label: "Mezzi",
+      icon: <Truck className="w-4 h-4" />,
     },
     {
-      href: "/dashboard/users",
-      label: "Utenti",
-      icon: <Users className="w-4 h-4" />,
-    },
-    {
-      href: "/dashboard/calendar",
-      label: "Calendario",
-      icon: <Calendar className="w-4 h-4" />,
-    },
-    {
-      href: "/dashboard/reports",
-      label: "Report",
-      icon: <FileText className="w-4 h-4" />,
-    },
-    {
-      href: "/dashboard/requests",
-      label: "Richieste",
-      icon: <ClipboardList className="w-4 h-4" />,
+      href: "/dashboard/vehicle-logs",
+      label: "Registro Mezzi",
+      icon: <Map className="w-4 h-4" />,
     },
     {
       href: "/dashboard/manage-server",
@@ -105,24 +86,9 @@ export default function Navbar({
 
   const employeeLinks = [
     {
-      href: "/dashboard/calendar",
-      label: "Calendario",
-      icon: <Calendar className="w-4 h-4" />,
-    },
-    {
-      href: "/dashboard/reports",
-      label: "Report",
-      icon: <FileText className="w-4 h-4" />,
-    },
-    {
-      href: "/dashboard/requests",
-      label: "Richieste",
-      icon: <ClipboardList className="w-4 h-4" />,
-    },
-    {
-      href: "/dashboard/profile",
-      label: "Profilo",
-      icon: <User className="w-4 h-4" />,
+      href: "/dashboard/vehicle-logs",
+      label: "Registro Mezzi",
+      icon: <Map className="w-4 h-4" />,
     },
   ];
 

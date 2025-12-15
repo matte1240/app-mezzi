@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - master
       - develop
   workflow_dispatch:
 
@@ -38,10 +39,10 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            # Main branch tags
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
-            type=raw,value=production,enable=${{ github.ref == 'refs/heads/main' }}
-            type=sha,prefix=prod-,enable=${{ github.ref == 'refs/heads/main' }}
+            # Main/Master branch tags
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
+            type=raw,value=production,enable=${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
+            type=sha,prefix=prod-,enable=${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
             # Develop branch tags
             type=raw,value=dev,enable=${{ github.ref == 'refs/heads/develop' }}
             type=sha,prefix=dev-,enable=${{ github.ref == 'refs/heads/develop' }}

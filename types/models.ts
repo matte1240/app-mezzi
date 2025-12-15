@@ -54,3 +54,18 @@ export type LeaveRequestDTO = {
   };
 };
 
+
+export type VehicleStatus = "ACTIVE" | "MAINTENANCE" | "OUT_OF_SERVICE";
+
+export type Vehicle = {
+  id: string;
+  plate: string;
+  name: string;
+  type: string;
+  status: VehicleStatus;
+  notes?: string | null;
+  serviceIntervalKm: number;
+  registrationDate?: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
