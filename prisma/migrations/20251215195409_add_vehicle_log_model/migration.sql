@@ -1,5 +1,5 @@
 -- CreateTable
-CREATE TABLE "VehicleLog" (
+CREATE TABLE IF NOT EXISTS "VehicleLog" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "vehicleId" TEXT NOT NULL,
@@ -17,16 +17,28 @@ CREATE TABLE "VehicleLog" (
 );
 
 -- CreateIndex
-CREATE INDEX "VehicleLog_userId_idx" ON "VehicleLog"("userId");
+CREATE INDEX IF NOT EXISTS "VehicleLog_userId_idx" ON "VehicleLog"("userId");
 
 -- CreateIndex
-CREATE INDEX "VehicleLog_vehicleId_idx" ON "VehicleLog"("vehicleId");
+CREATE INDEX IF NOT EXISTS "VehicleLog_vehicleId_idx" ON "VehicleLog"("vehicleId");
 
 -- CreateIndex
-CREATE INDEX "VehicleLog_date_idx" ON "VehicleLog"("date");
+CREATE INDEX IF NOT EXISTS "VehicleLog_date_idx" ON "VehicleLog"("date");
 
 -- AddForeignKey
-ALTER TABLE "VehicleLog" ADD CONSTRAINT "VehicleLog_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'VehicleLog_userId_fkey') THEN
+        ALTER TABLE "VehicleLog" ADD CONSTRAINT "VehicleLog_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END
+$$;
 
 -- AddForeignKey
-ALTER TABLE "VehicleLog" ADD CONSTRAINT "VehicleLog_vehicleId_fkey" FOREIGN KEY ("vehicleId") REFERENCES "Vehicle"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'VehicleLog_vehicleId_fkey') THEN
+        ALTER TABLE "VehicleLog" ADD CONSTRAINT "VehicleLog_vehicleId_fkey" FOREIGN KEY ("vehicleId") REFERENCES "Vehicle"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+    END IF;
+END
+$$;
