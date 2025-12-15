@@ -1,0 +1,79 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: employee-tracker-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-SecureDockerPassword123}
+      POSTGRES_DB: ${POSTGRES_DB:-employee_tracker}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - app_backups:/backups
+    networks:
+      - employee-tracker-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-app} -d ${POSTGRES_DB:-employee_tracker}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Next.js Application
+  app:
+    image: ghcr.io/matte1240/employee-app:${TAG:-latest}
+    container_name: employee-tracker-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Database
+      DATABASE_URL: postgresql://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-SecureDockerPassword123}@postgres:5432/${POSTGRES_DB:-employee_tracker}?schema=public
+      
+      # NextAuth
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      
+      # App URL
+      APP_URL: ${APP_URL:-http://localhost:3000}
+      
+      # Email Configuration
+      EMAIL_HOST: ${EMAIL_HOST:-smtp.gmail.com}
+      EMAIL_USER: ${EMAIL_USER:-}
+      EMAIL_PASSWORD: ${EMAIL_PASSWORD:-}
+      EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-Time Tracker}
+      
+      # Backup Configuration
+      BACKUP_CRON_SCHEDULE: ${BACKUP_CRON_SCHEDULE:-0 2 * * *}
+      BACKUP_EMAIL_RECIPIENT: ${BACKUP_EMAIL_RECIPIENT:-}
+
+      # Node
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: 3000
+      HOSTNAME: "0.0.0.0"
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    volumes:
+      - app_logs:/app/logs
+      - app_backups:/app/backups/database
+      - app_uploads:/app/public/uploads
+    networks:
+      - employee-tracker-network
+
+networks:
+  employee-tracker-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  app_logs:
+    driver: local
+  app_backups:
+    driver: local
+  app_uploads:
+    driver: local
+
