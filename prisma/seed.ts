@@ -49,70 +49,22 @@ async function main() {
     role: "EMPLOYEE",
   });
 
-  console.log("\n📅 Creating sample time entries...");
-  
-  // Ensure example time entries exist for the employee. Use find/create per-entry
-  // to make the seed idempotent (safe to run multiple times).
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
+  console.log("\n� Creating sample vehicles...");
 
-  const entries = [
-    {
-      userId: employee.id,
-      workDate: today,
-      hoursWorked: 8,
-      overtimeHours: 0,
-      permessoHours: 0,
-      morningStart: "09:00",
-      morningEnd: "13:00",
-      afternoonStart: "14:00",
-      afternoonEnd: "18:00",
-      notes: "Project kickoff",
+  const vehicle = await prisma.vehicle.upsert({
+    where: { plate: "AB123CD" },
+    update: {},
+    create: {
+      plate: "AB123CD",
+      name: "Fiat Panda",
+      type: "Car",
+      status: "ACTIVE",
+      serviceIntervalKm: 15000,
+      registrationDate: new Date("2024-01-01"),
+      notes: "Company fleet car #1",
     },
-    {
-      userId: employee.id,
-      workDate: yesterday,
-      hoursWorked: 7.5,
-      overtimeHours: 0,
-      permessoHours: 0,
-      morningStart: "09:00",
-      morningEnd: "12:30",
-      afternoonStart: "14:00",
-      afternoonEnd: "18:00",
-      notes: "Client follow-up",
-    },
-  ];
-
-  for (const e of entries) {
-    try {
-      const exists = await prisma.timeEntry.findFirst({
-        where: {
-          userId: e.userId,
-          workDate: e.workDate,
-        },
-      });
-
-      if (!exists) {
-        await prisma.timeEntry.create({ data: e });
-        console.log(`✓ Created time entry for ${e.workDate.toISOString().split('T')[0]}`);
-      } else {
-        console.log(`- Time entry already exists for ${e.workDate.toISOString().split('T')[0]}`);
-      }
-    } catch (err: unknown) {
-      // If schema mismatch (missing columns), warn but don't fail
-      const error = err as { code?: string; message?: string };
-      if (error?.code === 'P2022' || error?.message?.includes('column')) {
-        console.warn(`⚠️  Could not create time entry: database schema may be outdated. Run migrations first.`);
-        console.warn(`   Error: ${error.message}`);
-        break;
-      }
-      console.error(`❌ Failed to create time entry:`, err);
-      throw err;
-    }
-  }
+  });
+  console.log(`✓ Created vehicle ${vehicle.name} (${vehicle.plate})`);
 
   console.log("\n✅ Seed completed successfully!");
   console.log("\n📋 Test Credentials:");

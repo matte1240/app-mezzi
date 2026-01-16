@@ -11,8 +11,8 @@ export default async function DashboardPage() {
 
   // Redirect based on user role
   if (isAdmin(session)) {
-    redirect("/dashboard/admin");
+    redirect("/dashboard/vehicles");
   } else {
-    redirect("/dashboard/calendar");
+    redirect("/dashboard/vehicle-logs");
   }
 }

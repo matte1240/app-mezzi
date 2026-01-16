@@ -13,7 +13,6 @@ import {
   CheckCircle,
   AlertCircle
 } from "lucide-react";
-import { cn } from "@/lib/utils";
 
 type ActiveVehicle = {
   id: string;
@@ -115,7 +114,7 @@ export default function VehicleLogForm() {
           notes: "",
         });
         router.refresh();
-      } catch (err) {
+      } catch {
         setError("Si è verificato un errore imprevisto");
       }
     });
@@ -125,7 +124,7 @@ export default function VehicleLogForm() {
     <div className="rounded-xl border border-border bg-card shadow-sm">
       <div className="border-b border-border p-6">
         <h3 className="text-lg font-semibold text-foreground">Nuovo Registro</h3>
-        <p className="text-sm text-muted-foreground">Compila i dettagli dell'utilizzo del mezzo.</p>
+        <p className="text-sm text-muted-foreground">Compila i dettagli dell&apos;utilizzo del mezzo.</p>
       </div>
       
       <div className="p-6">

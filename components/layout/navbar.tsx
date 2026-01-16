@@ -12,6 +12,7 @@ import {
   Truck,
   Map,
   Server,
+  Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -81,6 +82,11 @@ export default function Navbar({
       href: "/dashboard/manage-server",
       label: "Manage Server",
       icon: <Server className="w-4 h-4" />,
+    },
+    {
+      href: "/dashboard/users",
+      label: "Utenti",
+      icon: <Users className="w-4 h-4" />,
     },
   ];
 

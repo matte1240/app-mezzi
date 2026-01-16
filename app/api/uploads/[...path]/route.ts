@@ -5,13 +5,13 @@ import { existsSync } from "fs";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ filename: string }> }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
-  const { filename } = await params;
+  const { path: pathSegments } = await params;
   
-  // Prevent directory traversal
-  const safeFilename = path.basename(filename);
-  const filePath = path.join(process.cwd(), "public/uploads", safeFilename);
+  // Join path segments and prevent directory traversal
+  const safePath = path.normalize(pathSegments.join("/")).replace(/^(\.\.(\/|\\|$))+/, '');
+  const filePath = path.join(process.cwd(), "public/uploads", safePath);
 
   if (!existsSync(filePath)) {
     return new NextResponse("File not found", { status: 404 });
@@ -21,7 +21,7 @@ export async function GET(
     const fileBuffer = await readFile(filePath);
     
     // Determine content type based on extension
-    const ext = path.extname(safeFilename).toLowerCase();
+    const ext = path.extname(safePath).toLowerCase();
     let contentType = "application/octet-stream";
     
     if (ext === ".jpg" || ext === ".jpeg") contentType = "image/jpeg";
@@ -29,6 +29,7 @@ export async function GET(
     else if (ext === ".gif") contentType = "image/gif";
     else if (ext === ".webp") contentType = "image/webp";
     else if (ext === ".svg") contentType = "image/svg+xml";
+    else if (ext === ".pdf") contentType = "application/pdf";
 
     return new NextResponse(fileBuffer, {
       headers: {

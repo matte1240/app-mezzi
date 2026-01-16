@@ -4,22 +4,22 @@ import { useState } from "react";
 import { 
   Truck, 
   Wrench, 
-  History, 
+  Fuel, 
   LayoutDashboard, 
-  Calendar,
-  MapPin,
-  User,
-  Clock,
   Gauge,
   AlertCircle,
   CheckCircle,
-  AlertTriangle
+  AlertTriangle,
+  FileText,
+  History
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { format, addYears, isBefore } from "date-fns";
+import { format, addYears, isBefore, differenceInDays } from "date-fns";
 import { it } from "date-fns/locale";
 import VehicleLogList from "./vehicle-log-list";
 import VehicleMaintenance from "./vehicle-maintenance";
+import VehicleRefueling from "./vehicle-refueling";
+import VehicleDocuments from "./vehicle-documents";
 import type { VehicleStatus } from "@/types/models";
 
 type VehicleDetailsViewProps = {
@@ -39,17 +39,59 @@ type VehicleDetailsViewProps = {
     lastUsageDate: string;
     lastUser: string | null;
   };
-  logs: any[];
-  maintenance: any[];
+  logs: {
+      id: string;
+      date: string;
+      initialKm: number;
+      finalKm: number;
+      startTime: string;
+      endTime: string;
+      route: string;
+      user: {
+        name: string | null;
+        email: string;
+      };
+      vehicle: {
+        plate: string;
+        name: string;
+      };
+  }[];
+  maintenance: {
+      id: string;
+      date: string;
+      type: "TAGLIANDO" | "GOMME" | "MECCANICA" | "REVISIONE" | "ALTRO";
+      cost: number | null;
+      mileage: number;
+      notes: string | null;
+  }[];
+  refueling: {
+      id: string;
+      date: string;
+      liters: number;
+      cost: number;
+      mileage: number;
+      notes: string | null;
+  }[];
+  documents: {
+    id: string;
+    title: string;
+    fileUrl: string;
+    fileType: string;
+    expiryDate: string | null;
+    notes: string | null;
+    createdAt: string;
+  }[];
 };
 
 export default function VehicleDetailsView({ 
   vehicle, 
   stats, 
   logs, 
-  maintenance 
+  maintenance,
+  refueling,
+  documents
 }: VehicleDetailsViewProps) {
-  const [activeTab, setActiveTab] = useState<"overview" | "logs" | "maintenance">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "logs" | "maintenance" | "refueling" | "documents">("overview");
 
   // Calculate maintenance status for the header/overview
   const lastService = maintenance.find(r => r.type === "TAGLIANDO");
@@ -98,6 +140,58 @@ export default function VehicleDetailsView({
       text: "In Scadenza"
     };
   }
+
+  // Calculate Average Annual Mileage
+  const calculateAverageAnnualMileage = () => {
+    let startDate = vehicle.registrationDate ? new Date(vehicle.registrationDate) : null;
+    
+    // If no registration date, try to find the earliest record
+    if (!startDate) {
+      const dates: number[] = [];
+      if (logs.length > 0) dates.push(new Date(logs[logs.length - 1].date).getTime());
+      if (maintenance.length > 0) dates.push(new Date(maintenance[maintenance.length - 1].date).getTime());
+      if (refueling.length > 0) dates.push(new Date(refueling[refueling.length - 1].date).getTime());
+      
+      if (dates.length > 0) {
+        startDate = new Date(Math.min(...dates));
+      }
+    }
+
+    if (!startDate) return 0;
+
+    const daysDiff = differenceInDays(new Date(), startDate);
+    if (daysDiff < 30) return stats.lastMileage; // Approximate to actual if less than a month
+
+    const years = daysDiff / 365;
+    return Math.round(stats.lastMileage / years);
+  };
+
+  // Calculate Average Consumption (L/100km)
+  const calculateAverageConsumption = () => {
+    if (refueling.length < 2) return null;
+
+    // Sort by mileage ascending
+    const sortedRefueling = [...refueling].sort((a, b) => a.mileage - b.mileage);
+    
+    const minKm = sortedRefueling[0].mileage;
+    const maxKm = sortedRefueling[sortedRefueling.length - 1].mileage;
+    const distance = maxKm - minKm;
+
+    if (distance <= 0) return null;
+
+    // Sum liters excluding the first record (which corresponds to consumption BEFORE the tracking start)
+    // Actually, each refueling fills the tank for the PREVIOUS segment.
+    // So if Record 1 (10000km, 50L) -> This 50L was used 0-10000km?? Or 5000-10000? 
+    // Usually we assume full tank.
+    // So Record 2 (10500km, 40L) -> 40L used for 10000-10500km.
+    // We sum liters from index 1 to end (all records except the first one in chronological/mileage order).
+    const totalLiters = sortedRefueling.slice(1).reduce((acc, curr) => acc + Number(curr.liters), 0);
+
+    return (totalLiters / distance) * 100;
+  };
+
+  const avgAnnualMileage = calculateAverageAnnualMileage();
+  const avgConsumption = calculateAverageConsumption();
 
   return (
     <div className="space-y-6">
@@ -162,20 +256,27 @@ export default function VehicleDetailsView({
           </div>
           <div>
             <p className="text-sm font-medium text-muted-foreground">Prossimo Tagliando</p>
-            <p className="text-2xl font-bold text-foreground mt-1">{nextServiceKm.toLocaleString('it-IT')} km</p>
-          </div>
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">Ultimo Utilizzo</p>
-            <p className="text-lg font-semibold text-foreground mt-1 truncate" title={stats.lastUsageDate}>
-              {stats.lastUsageDate}
+            <p className={cn(
+              "text-2xl font-bold mt-1",
+              kmToNextService < 0 ? "text-destructive" : "text-foreground"
+            )}>
+              {kmToNextService >= 0 
+                ? `Fra ${kmToNextService.toLocaleString('it-IT')} km`
+                : `Scaduto da ${Math.abs(kmToNextService).toLocaleString('it-IT')} km`
+              }
             </p>
-            {stats.lastUser && (
-              <p className="text-xs text-muted-foreground truncate">{stats.lastUser}</p>
-            )}
           </div>
           <div>
-            <p className="text-sm font-medium text-muted-foreground">Totale Viaggi</p>
-            <p className="text-2xl font-bold text-foreground mt-1">{stats.totalLogs}</p>
+            <p className="text-sm font-medium text-muted-foreground">Medio Annuo</p>
+            <p className="text-2xl font-bold text-foreground mt-1">
+              {avgAnnualMileage.toLocaleString('it-IT')} km
+            </p>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-muted-foreground">Consumo Medio</p>
+            <p className="text-2xl font-bold text-foreground mt-1">
+              {avgConsumption ? `${avgConsumption.toFixed(1)} L/100km` : "N/D"}
+            </p>
           </div>
         </div>
       </div>
@@ -219,6 +320,30 @@ export default function VehicleDetailsView({
             <Wrench className="h-4 w-4" />
             Manutenzione
           </button>
+          <button
+            onClick={() => setActiveTab("refueling")}
+            className={cn(
+              "whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors flex items-center gap-2",
+              activeTab === "refueling"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:border-border hover:text-foreground"
+            )}
+          >
+            <Fuel className="h-4 w-4" />
+            Rifornimenti
+          </button>
+          <button
+            onClick={() => setActiveTab("documents")}
+            className={cn(
+              "whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium transition-colors flex items-center gap-2",
+              activeTab === "documents"
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:border-border hover:text-foreground"
+            )}
+          >
+            <FileText className="h-4 w-4" />
+            Documenti
+          </button>
         </nav>
       </div>
 
@@ -230,40 +355,40 @@ export default function VehicleDetailsView({
               <div className="rounded-xl border border-border bg-card shadow-sm">
                 <div className="p-6 border-b border-border">
                   <h3 className="font-semibold text-foreground flex items-center gap-2">
-                    <History className="h-5 w-5 text-muted-foreground" />
-                    Ultimi Viaggi
+                    <Fuel className="h-5 w-5 text-muted-foreground" />
+                    Ultimi Rifornimenti
                   </h3>
                 </div>
                 <div className="divide-y divide-border">
-                  {logs.slice(0, 5).map((log) => (
-                    <div key={log.id} className="p-4 flex items-center justify-between hover:bg-muted/50 transition">
+                  {refueling.slice(0, 5).map((record) => (
+                    <div key={record.id} className="p-4 flex items-center justify-between hover:bg-muted/50 transition">
                       <div className="flex items-center gap-4">
                         <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                          <Calendar className="h-5 w-5 text-muted-foreground" />
+                          <Fuel className="h-5 w-5 text-muted-foreground" />
                         </div>
                         <div>
                           <p className="text-sm font-medium text-foreground">
-                            {format(new Date(log.date), "dd MMMM yyyy", { locale: it })}
+                            {format(new Date(record.date), "dd MMMM yyyy", { locale: it })}
                           </p>
                           <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                            <User className="h-3 w-3" />
-                            {log.user.name || log.user.email}
+                            <Gauge className="h-3 w-3" />
+                            {record.mileage} km
                           </div>
                         </div>
                       </div>
                       <div className="text-right">
                         <p className="text-sm font-medium text-foreground">
-                          {log.finalKm - log.initialKm} km
+                          {Number(record.liters).toFixed(2)} L
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {log.startTime} - {log.endTime}
+                          € {Number(record.cost).toFixed(2)}
                         </p>
                       </div>
                     </div>
                   ))}
-                  {logs.length === 0 && (
+                  {refueling.length === 0 && (
                     <div className="p-8 text-center text-muted-foreground">
-                      Nessun viaggio recente
+                      Nessun rifornimento recente
                     </div>
                   )}
                 </div>
@@ -327,6 +452,21 @@ export default function VehicleDetailsView({
             currentMileage={stats.lastMileage}
             serviceIntervalKm={vehicle.serviceIntervalKm}
             initialRecords={maintenance}
+          />
+        )}
+
+        {activeTab === "refueling" && (
+          <VehicleRefueling 
+            vehicleId={vehicle.id}
+            currentMileage={stats.lastMileage}
+            initialRecords={refueling}
+          />
+        )}
+
+        {activeTab === "documents" && (
+          <VehicleDocuments 
+            vehicleId={vehicle.id}
+            initialDocuments={documents}
           />
         )}
       </div>

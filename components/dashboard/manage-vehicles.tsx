@@ -87,7 +87,7 @@ export default function ManageVehicles({ vehicles }: ManageVehiclesProps) {
           setIsCreateModalOpen(false);
           resetForm();
         }, 1500);
-      } catch (err) {
+      } catch {
         setError("Si è verificato un errore imprevisto");
       }
     });
@@ -120,7 +120,7 @@ export default function ManageVehicles({ vehicles }: ManageVehiclesProps) {
           setEditingVehicle(null);
           resetForm();
         }, 1500);
-      } catch (err) {
+      } catch {
         setError("Si è verificato un errore imprevisto");
       }
     });
@@ -145,7 +145,7 @@ export default function ManageVehicles({ vehicles }: ManageVehiclesProps) {
 
         router.refresh();
         setDeletingVehicle(null);
-      } catch (err) {
+      } catch {
         setError("Si è verificato un errore imprevisto");
       }
     });
@@ -249,7 +249,11 @@ export default function ManageVehicles({ vehicles }: ManageVehiclesProps) {
                   const isWarning = kmToNextService < 1500 && !isOverdue;
 
                   return (
-                  <tr key={vehicle.id} className="transition hover:bg-muted/50">
+                  <tr 
+                    key={vehicle.id} 
+                    className="transition hover:bg-muted/50 cursor-pointer"
+                    onClick={() => router.push(`/dashboard/vehicles/${vehicle.id}`)}
+                  >
                     <td className="whitespace-nowrap px-6 py-4">
                       <div className="flex items-center">
                         <div className="relative flex h-10 w-10 items-center justify-center rounded-full bg-muted text-sm font-semibold text-muted-foreground overflow-hidden">
@@ -297,14 +301,14 @@ export default function ManageVehicles({ vehicles }: ManageVehiclesProps) {
                       {vehicle.notes}
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-right text-sm font-medium">
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
                         <button
                           onClick={() => router.push(`/dashboard/vehicles/${vehicle.id}`)}
                           className="inline-flex items-center gap-1 rounded-lg bg-primary/10 px-3 py-2 text-sm font-semibold text-primary transition hover:bg-primary/20 cursor-pointer"
-                          title="Visualizza storico"
+                          title="Visualizza dettaglio"
                         >
                           <History className="h-4 w-4" />
-                          Storico
+                          Dettaglio
                         </button>
                         <button
                           onClick={() => openEditModal(vehicle)}

@@ -9,17 +9,8 @@ import {
   conflictResponse,
   handleError,
 } from "@/lib/api-responses";
-import { decimalToNumber } from "@/lib/utils/serialization";
 
 type UserRole = "EMPLOYEE" | "ADMIN";
-
-type UserRow = {
-  id: string;
-  name: string | null;
-  email: string;
-  role: UserRole;
-  createdAt: Date;
-};
 
 const createUserSchema = z.object({
   email: z.string().email(),
@@ -32,33 +23,19 @@ export async function GET() {
   const { error } = await requireAdmin();
   if (error) return error;
 
-  const [users, totals] = await Promise.all([
-    prisma.user.findMany({
-      orderBy: { createdAt: "asc" },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        createdAt: true,
-      },
-    }) as Promise<UserRow[]>,
-    prisma.timeEntry.groupBy({
-      by: ["userId"],
-      _sum: { hoursWorked: true },
-    }),
-  ]);
-
-  const totalsMap = new Map<string, number>();
-
-  for (const item of totals) {
-    const total = item._sum.hoursWorked;
-    totalsMap.set(item.userId, decimalToNumber(total));
-  }
+  const users = await prisma.user.findMany({
+    orderBy: { createdAt: "asc" },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      createdAt: true,
+    },
+  });
 
   const payload = users.map((user) => ({
     ...user,
-    totalHours: totalsMap.get(user.id) ?? 0,
   }));
 
   return successResponse(payload);

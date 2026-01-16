@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { format } from "date-fns";
 import { 
   Wrench, 
@@ -37,6 +38,7 @@ export default function VehicleMaintenance({
   serviceIntervalKm, 
   initialRecords 
 }: VehicleMaintenanceProps) {
+  const router = useRouter();
   const [records, setRecords] = useState<MaintenanceRecord[]>(initialRecords);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<MaintenanceRecord | null>(null);
@@ -121,7 +123,8 @@ export default function VehicleMaintenance({
         }
 
         setRecords(prev => prev.filter(r => r.id !== id));
-      } catch (err) {
+        router.refresh();
+      } catch {
         alert("Si è verificato un errore imprevisto");
       }
     });
@@ -171,7 +174,8 @@ export default function VehicleMaintenance({
         
         setIsModalOpen(false);
         resetForm();
-      } catch (err) {
+        router.refresh();
+      } catch {
         setError("Si è verificato un errore imprevisto");
       }
     });

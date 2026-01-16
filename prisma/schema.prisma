@@ -20,33 +20,10 @@ model User {
   tokenVersion  Int         @default(0)
   accounts      Account[]
   sessions      Session[]
-  timeEntries   TimeEntry[]
-  leaveRequests LeaveRequest[]
   vehicleLogs   VehicleLog[]
 }
 
-model TimeEntry {
-  id                 String   @id @default(cuid())
-  userId             String
-  workDate           DateTime
-  hoursWorked        Decimal
-  overtimeHours      Decimal  @default(0)
-  permessoHours      Decimal  @default(0)
-  morningStart       String?
-  morningEnd         String?
-  afternoonStart     String?
-  afternoonEnd       String?
-  notes              String?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-  medicalCertificate String?
-  sicknessHours      Decimal  @default(0)
-  vacationHours      Decimal  @default(0)
-  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, workDate], map: "user_workdate_unique")
-  @@index([workDate], map: "workdate_idx")
-}
 
 model Account {
   id                       String  @id @default(cuid())
@@ -88,36 +65,6 @@ enum Role {
   ADMIN
 }
 
-model LeaveRequest {
-  id          String        @id @default(cuid())
-  userId      String
-  startDate   DateTime
-  endDate     DateTime
-  type        LeaveType
-  status      RequestStatus @default(PENDING)
-  reason      String?
-  startTime   String?
-  endTime     String?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId, status], map: "user_status_idx")
-  @@index([status, createdAt], map: "status_created_idx")
-  @@index([userId, startDate, endDate], map: "user_dates_idx")
-}
-
-enum RequestStatus {
-  PENDING
-  APPROVED
-  REJECTED
-}
-
-enum LeaveType {
-  VACATION
-  SICKNESS
-  PERMESSO
-}
 
 model Vehicle {
   id                String              @id @default(cuid())
@@ -132,6 +79,8 @@ model Vehicle {
   updatedAt         DateTime            @updatedAt
   logs              VehicleLog[]
   maintenance       MaintenanceRecord[]
+  refueling         RefuelingRecord[]
+  documents         VehicleDocument[]
 }
 
 enum VehicleStatus {
@@ -179,10 +128,43 @@ model MaintenanceRecord {
   @@index([date])
 }
 
+model RefuelingRecord {
+  id        String   @id @default(cuid())
+  vehicleId String
+  date      DateTime
+  liters    Decimal  @db.Decimal(10, 2)
+  cost      Decimal  @db.Decimal(10, 2)
+  mileage   Int
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@index([date])
+}
+
 enum MaintenanceType {
   TAGLIANDO
   GOMME
   MECCANICA
   REVISIONE
   ALTRO
+}
+
+model VehicleDocument {
+  id        String    @id @default(cuid())
+  vehicleId String
+  title     String
+  fileUrl   String
+  fileType  String
+  expiryDate DateTime?
+  notes     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  vehicle   Vehicle   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
 }

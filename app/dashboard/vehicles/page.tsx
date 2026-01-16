@@ -29,9 +29,19 @@ export default async function VehiclesPage() {
         },
       },
       maintenance: {
-        where: { type: "TAGLIANDO" },
-        take: 1,
+        take: 10,
         orderBy: { date: "desc" },
+        select: {
+          mileage: true,
+          type: true,
+        },
+      },
+      refueling: {
+        take: 1,
+        orderBy: [
+            { date: "desc" },
+            { mileage: "desc" }
+        ],
         select: {
           mileage: true,
         },
@@ -39,11 +49,18 @@ export default async function VehiclesPage() {
     },
   });
 
-  const vehicles = vehiclesData.map((v) => ({
-    ...v,
-    lastMileage: v.logs[0]?.finalKm || 0,
-    lastServiceKm: v.maintenance[0]?.mileage || 0,
-  })) as (Vehicle & { lastMileage: number; lastServiceKm: number })[];
+  const vehicles = vehiclesData.map((v) => {
+      const lastLogKm = v.logs[0]?.finalKm || 0;
+      const lastRefuelingKm = v.refueling[0]?.mileage || 0;
+      const lastMaintenanceKm = v.maintenance.reduce((max, m) => Math.max(max, m.mileage), 0);
+      const lastTagliando = v.maintenance.find(m => m.type === "TAGLIANDO");
+      
+      return {
+        ...v,
+        lastMileage: Math.max(lastLogKm, lastRefuelingKm, lastMaintenanceKm),
+        lastServiceKm: lastTagliando?.mileage || 0,
+      };
+  }) as (Vehicle & { lastMileage: number; lastServiceKm: number })[];
 
   return <ManageVehicles vehicles={vehicles} />;
 }

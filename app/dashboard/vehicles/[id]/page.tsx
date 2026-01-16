@@ -37,8 +37,14 @@ export default async function VehicleDetailPage({ params }: Props) {
       maintenance: {
         orderBy: { date: "desc" },
       },
+      refueling: {
+        orderBy: { date: "desc" },
+      },
+      documents: {
+        orderBy: { createdAt: "desc" },
+      },
     },
-  })) as any;
+  }));
 
   if (!vehicle) {
     return (
@@ -51,7 +57,7 @@ export default async function VehicleDetailPage({ params }: Props) {
     );
   }
 
-  const formattedLogs = vehicle.logs.map((log: any) => ({
+  const formattedLogs = vehicle.logs.map((log) => ({
     id: log.id,
     date: log.date.toISOString(),
     initialKm: log.initialKm,
@@ -69,17 +75,42 @@ export default async function VehicleDetailPage({ params }: Props) {
     },
   }));
 
-  const formattedMaintenance = vehicle.maintenance.map((record: any) => ({
+  const formattedMaintenance = vehicle.maintenance.map((record) => ({
     id: record.id,
     date: record.date.toISOString(),
     type: record.type,
-    cost: record.cost ? Number(record.cost) : null,
+    cost: record.cost ? record.cost.toNumber() : null,
     mileage: record.mileage,
     notes: record.notes,
   }));
 
+  const formattedRefueling = vehicle.refueling.map((record) => ({
+    id: record.id,
+    date: record.date.toISOString(),
+    liters: record.liters ? record.liters.toNumber() : 0,
+    cost: record.cost ? record.cost.toNumber() : 0,
+    mileage: record.mileage,
+    notes: record.notes,
+  }));
+
+  const formattedDocuments = vehicle.documents.map((doc) => ({
+    id: doc.id,
+    title: doc.title,
+    fileUrl: doc.fileUrl,
+    fileType: doc.fileType,
+    expiryDate: doc.expiryDate ? doc.expiryDate.toISOString() : null,
+    notes: doc.notes,
+    createdAt: doc.createdAt.toISOString(),
+  }));
+
   const lastLog = vehicle.logs[0];
-  const lastMileage = lastLog ? lastLog.finalKm : 0;
+  const lastRefueling = vehicle.refueling[0];
+
+  const lastLogKm = lastLog ? lastLog.finalKm : 0;
+  const lastRefuelingKm = lastRefueling ? lastRefueling.mileage : 0;
+  const lastMaintenanceKm = vehicle.maintenance.reduce((max, r) => Math.max(max, r.mileage), 0);
+  const lastMileage = Math.max(lastLogKm, lastRefuelingKm, lastMaintenanceKm);
+
   const totalLogs = vehicle.logs.length;
   const lastUsageDate = lastLog ? new Date(lastLog.date).toLocaleDateString("it-IT") : "Mai";
   const lastUser = lastLog ? (lastLog.user.name || lastLog.user.email) : null;
@@ -115,6 +146,8 @@ export default async function VehicleDetailPage({ params }: Props) {
         }}
         logs={formattedLogs}
         maintenance={formattedMaintenance}
+        refueling={formattedRefueling}
+        documents={formattedDocuments}
       />
     </div>
   );
