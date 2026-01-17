@@ -10,20 +10,15 @@ import {
   Trash2,
   Download,
   AlertCircle,
-  File,
-  Eye
+  File
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import dynamic from "next/dynamic";
-
-const PdfViewer = dynamic(() => import("@/components/ui/pdf-viewer"), {
-  ssr: false,
-  loading: () => <div className="flex items-center justify-center h-full min-h-[200px]"><Loader2 className="h-8 w-8 animate-spin" /></div>
-});
 
 type VehicleDocument = {
   id: string;
+  documentType: "LIBRETTO_CIRCOLAZIONE" | "ASSICURAZIONE" | "ALTRO";
   title: string;
+  year: number | null;
   fileUrl: string;
   fileType: string;
   expiryDate: string | null;
@@ -49,7 +44,9 @@ export default function VehicleDocuments({
 
   // Form state
   const [formData, setFormData] = useState({
+    documentType: "ALTRO" as "LIBRETTO_CIRCOLAZIONE" | "ASSICURAZIONE" | "ALTRO",
     title: "",
+    year: new Date().getFullYear().toString(),
     notes: "",
     expiryDate: "",
     file: null as File | null
@@ -57,12 +54,27 @@ export default function VehicleDocuments({
 
   const resetForm = () => {
     setFormData({
+      documentType: "ALTRO",
       title: "",
+      year: new Date().getFullYear().toString(),
       notes: "",
       expiryDate: "",
       file: null
     });
     setError(null);
+  };
+
+  const getDocumentTypeLabel = (type: string) => {
+    switch(type) {
+      case "LIBRETTO_CIRCOLAZIONE":
+        return "Libretto di circolazione";
+      case "ASSICURAZIONE":
+        return "Assicurazione";
+      case "ALTRO":
+        return "Altro";
+      default:
+        return type;
+    }
   };
 
   const openCreateModal = () => {
@@ -108,7 +120,18 @@ export default function VehicleDocuments({
       try {
         const data = new FormData();
         data.append("file", fileToUpload);
-        data.append("title", formData.title);
+        data.append("documentType", formData.documentType);
+        
+        // Invia title solo per ALTRO
+        if (formData.documentType === "ALTRO") {
+          data.append("title", formData.title);
+        }
+        
+        // Invia year solo per ASSICURAZIONE
+        if (formData.documentType === "ASSICURAZIONE") {
+          data.append("year", formData.year);
+        }
+        
         if (formData.notes) data.append("notes", formData.notes);
         if (formData.expiryDate) data.append("expiryDate", formData.expiryDate);
 
@@ -157,7 +180,11 @@ export default function VehicleDocuments({
            </div>
         ) : (
           documents.map((doc) => (
-            <div key={doc.id} className="group relative flex flex-col justify-between rounded-xl border border-border bg-card p-4 shadow-sm transition hover:shadow-md">
+            <div 
+              key={doc.id} 
+              onClick={() => setSelectedDoc(doc)}
+              className="group relative flex flex-col justify-between rounded-xl border border-border bg-card p-4 shadow-sm transition hover:shadow-md cursor-pointer"
+            >
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
@@ -168,18 +195,23 @@ export default function VehicleDocuments({
                       {doc.title}
                     </h4>
                     <p className="text-xs text-muted-foreground">
+                      {getDocumentTypeLabel(doc.documentType)}
+                      {doc.documentType === "ASSICURAZIONE" && doc.year && ` (${doc.year})`}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
                       Caricato il {format(new Date(doc.createdAt), "dd/MM/yyyy")}
                     </p>
                   </div>
                 </div>
-                <div className="flex gap-1">
-                   <button 
-                     onClick={() => setSelectedDoc(doc)}
+                <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                   <a
+                     href={doc.fileUrl}
+                     download
                      className="rounded-md p-2 text-muted-foreground hover:bg-secondary hover:text-foreground transition"
-                     title="Visualizza"
+                     title="Scarica"
                    >
-                     <Eye className="h-4 w-4" />
-                   </button>
+                     <Download className="h-4 w-4" />
+                   </a>
                    <button
                      onClick={() => handleDelete(doc.id)}
                      className="rounded-md p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition"
@@ -229,17 +261,58 @@ export default function VehicleDocuments({
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">
-                  Titolo Documento *
+                  Tipo di Documento *
                 </label>
-                <input
-                  type="text"
+                <select
                   required
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  value={formData.documentType}
+                  onChange={(e) => setFormData({ ...formData, documentType: e.target.value as "LIBRETTO_CIRCOLAZIONE" | "ASSICURAZIONE" | "ALTRO" })}
                   className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background outline-none focus:ring-2 focus:ring-ring"
-                  placeholder="Es. Libretto, Assicurazione 2024"
-                />
+                >
+                  <option value="ALTRO">Altro</option>
+                  <option value="LIBRETTO_CIRCOLAZIONE">Libretto di circolazione</option>
+                  <option value="ASSICURAZIONE">Assicurazione (anno corrente)</option>
+                </select>
               </div>
+
+              {formData.documentType === "ASSICURAZIONE" && (
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">
+                    Anno *
+                  </label>
+                  <select
+                    required
+                    value={formData.year}
+                    onChange={(e) => setFormData({ ...formData, year: e.target.value })}
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    {Array.from({ length: 10 }, (_, i) => {
+                      const year = new Date().getFullYear() - i;
+                      return (
+                        <option key={year} value={year}>
+                          {year}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+              )}
+
+              {formData.documentType === "ALTRO" && (
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">
+                    Titolo Documento *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background outline-none focus:ring-2 focus:ring-ring"
+                    placeholder="Es. Certificato, Bollo, etc."
+                  />
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-foreground mb-1">
@@ -339,9 +412,11 @@ export default function VehicleDocuments({
 
             <div className="flex-1 bg-muted/30 overflow-hidden flex items-center justify-center relative">
               {selectedDoc.fileType === "application/pdf" ? (
-                <div className="w-full h-full p-4">
-                  <PdfViewer url={selectedDoc.fileUrl} />
-                </div>
+                <iframe
+                  src={selectedDoc.fileUrl}
+                  className="w-full h-full border-0"
+                  title={selectedDoc.title}
+                />
               ) : (
                 <div className="relative w-full h-full flex items-center justify-center overflow-auto p-4">
                     {/* eslint-disable-next-line @next/next/no-img-element */}

@@ -112,15 +112,18 @@ model VehicleLog {
 }
 
 model MaintenanceRecord {
-  id        String          @id @default(cuid())
-  vehicleId String
-  date      DateTime
-  type      MaintenanceType
-  cost      Decimal?        @db.Decimal(10, 2)
-  mileage   Int
-  notes     String?
-  createdAt DateTime        @default(now())
-  updatedAt DateTime        @updatedAt
+  id              String          @id @default(cuid())
+  vehicleId       String
+  date            DateTime
+  type            MaintenanceType
+  cost            Decimal?        @db.Decimal(10, 2)
+  mileage         Int
+  notes           String?
+  // Campi specifici per cambio gomme
+  tireType        TireType?       // Tipo di gomme (estive/invernali/4stagioni)
+  tireStorageLocation String?     // Dove sono state lasciate le gomme smontate
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
 
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
 
@@ -153,18 +156,32 @@ enum MaintenanceType {
   ALTRO
 }
 
-model VehicleDocument {
-  id        String    @id @default(cuid())
-  vehicleId String
-  title     String
-  fileUrl   String
-  fileType  String
-  expiryDate DateTime?
-  notes     String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+enum TireType {
+  ESTIVE
+  INVERNALI
+  QUATTRO_STAGIONI
+}
 
-  vehicle   Vehicle   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+enum DocumentType {
+  LIBRETTO_CIRCOLAZIONE
+  ASSICURAZIONE
+  ALTRO
+}
+
+model VehicleDocument {
+  id           String       @id @default(cuid())
+  vehicleId    String
+  documentType DocumentType @default(ALTRO)
+  title        String
+  year         Int?
+  fileUrl      String
+  fileType     String
+  expiryDate   DateTime?
+  notes        String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
 
   @@index([vehicleId])
 }

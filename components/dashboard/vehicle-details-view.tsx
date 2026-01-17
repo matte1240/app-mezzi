@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { 
   Truck, 
   Wrench, 
@@ -11,7 +12,9 @@ import {
   CheckCircle,
   AlertTriangle,
   FileText,
-  History
+  History,
+  X,
+  Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, addYears, isBefore, differenceInDays } from "date-fns";
@@ -74,7 +77,9 @@ type VehicleDetailsViewProps = {
   }[];
   documents: {
     id: string;
+    documentType: "LIBRETTO_CIRCOLAZIONE" | "ASSICURAZIONE" | "ALTRO";
     title: string;
+    year: number | null;
     fileUrl: string;
     fileType: string;
     expiryDate: string | null;
@@ -91,7 +96,17 @@ export default function VehicleDetailsView({
   refueling,
   documents
 }: VehicleDetailsViewProps) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<"overview" | "logs" | "maintenance" | "refueling" | "documents">("overview");
+  const [isKmModalOpen, setIsKmModalOpen] = useState(false);
+  const [manualKm, setManualKm] = useState("");
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
+  const [needsConfirmation, setNeedsConfirmation] = useState(false);
+
+  // Trova l'ultima rilevazione manuale
+  const lastManualLog = logs.find(log => log.route === "Rilevazione manuale KM");
 
   // Calculate maintenance status for the header/overview
   const lastService = maintenance.find(r => r.type === "TAGLIANDO");
@@ -193,6 +208,100 @@ export default function VehicleDetailsView({
   const avgAnnualMileage = calculateAverageAnnualMileage();
   const avgConsumption = calculateAverageConsumption();
 
+  const handleSubmitKm = async (e: React.FormEvent, forceConfirm = false) => {
+    e.preventDefault();
+    setError(null);
+    setWarning(null);
+
+    const km = parseInt(manualKm);
+    if (isNaN(km) || km <= 0) {
+      setError("Inserisci un valore valido");
+      return;
+    }
+
+    if (km < stats.lastMileage) {
+      setError(`Il chilometraggio deve essere maggiore o uguale a ${stats.lastMileage} km`);
+      return;
+    }
+
+    // Calcola la differenza dal chilometraggio attuale
+    const difference = km - stats.lastMileage;
+    
+    // Controllo: differenza troppo bassa (< 10 km) o troppo alta (> 1000 km)
+    if (!forceConfirm && !needsConfirmation) {
+      if (difference < 10) {
+        setWarning(`La differenza è molto bassa (${difference} km). Sei sicuro che il valore sia corretto?`);
+        setNeedsConfirmation(true);
+        return;
+      }
+      if (difference > 1000) {
+        setWarning(`La differenza è molto alta (${difference.toLocaleString('it-IT')} km). Sei sicuro che il valore sia corretto?`);
+        setNeedsConfirmation(true);
+        return;
+      }
+    }
+
+    startTransition(async () => {
+      try {
+        const res = await fetch("/api/vehicle-logs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            vehicleId: vehicle.id,
+            date: new Date().toISOString(),
+            initialKm: stats.lastMileage,
+            finalKm: km,
+            startTime: "00:00",
+            endTime: "00:00",
+            route: "Rilevazione manuale KM",
+          }),
+        });
+
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error || "Errore durante il salvataggio");
+        }
+
+        setIsKmModalOpen(false);
+        setManualKm("");
+        setNeedsConfirmation(false);
+        router.refresh();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Errore sconosciuto");
+      }
+    });
+  };
+
+  const handleDeleteLastManualLog = async () => {
+    if (!lastManualLog) return;
+    
+    if (!confirm("Sei sicuro di voler eliminare l'ultima rilevazione manuale?")) return;
+
+    startTransition(async () => {
+      try {
+        const res = await fetch(`/api/vehicle-logs?id=${lastManualLog.id}`, {
+          method: "DELETE",
+        });
+
+        if (!res.ok) {
+          let errorMessage = "Errore durante l'eliminazione";
+          try {
+            const data = await res.json();
+            errorMessage = data.error || errorMessage;
+          } catch {
+            // La risposta non è JSON, usa il messaggio di default
+          }
+          throw new Error(errorMessage);
+        }
+
+        setIsKmModalOpen(false);
+        router.refresh();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Errore sconosciuto");
+      }
+    });
+  };
+
   return (
     <div className="space-y-6">
       {/* Header Section */}
@@ -232,6 +341,17 @@ export default function VehicleDetailsView({
               <maintenanceStatus.icon className="h-4 w-4" />
               <span className="text-sm font-semibold">Tagliando: {maintenanceStatus.text}</span>
             </div>
+            <button
+              onClick={() => {
+                setManualKm(stats.lastMileage.toString());
+                setError(null);
+                setIsKmModalOpen(true);
+              }}
+              className="px-4 py-2 rounded-lg flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              <Gauge className="h-4 w-4" />
+              <span className="text-sm font-semibold">Rileva KM</span>
+            </button>
           </div>
         </div>
 
@@ -470,6 +590,126 @@ export default function VehicleDetailsView({
           />
         )}
       </div>
+
+      {/* Modal Rileva KM */}
+      {isKmModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-xl bg-card shadow-2xl border border-border">
+            <div className="flex items-center justify-between p-6 border-b border-border">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <Gauge className="h-5 w-5" />
+                </div>
+                <h3 className="text-lg font-semibold text-foreground">Rileva Chilometraggio</h3>
+              </div>
+              <button
+                onClick={() => {
+                  setIsKmModalOpen(false);
+                  setError(null);
+                }}
+                className="rounded-full p-2 hover:bg-secondary text-muted-foreground hover:text-foreground transition"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={(e) => handleSubmitKm(e, needsConfirmation)} className="p-6 space-y-4">
+              {error && (
+                <div className="rounded-lg bg-destructive/10 border border-destructive/20 p-3 flex items-start gap-2">
+                  <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-destructive">{error}</p>
+                </div>
+              )}
+
+              {warning && (
+                <div className="rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 p-3 flex items-start gap-2">
+                  <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-yellow-800 dark:text-yellow-200">{warning}</p>
+                </div>
+              )}
+
+              {lastManualLog && (
+                <div className="rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-blue-900 dark:text-blue-100">Ultima rilevazione manuale</p>
+                      <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                        {lastManualLog.finalKm.toLocaleString('it-IT')} km - {format(new Date(lastManualLog.date), "dd/MM/yyyy")}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleDeleteLastManualLog}
+                      disabled={isPending}
+                      className="text-xs px-2 py-1 rounded bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors disabled:opacity-50"
+                    >
+                      Elimina
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  Chilometraggio Attuale
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    value={manualKm}
+                    onChange={(e) => {
+                      setManualKm(e.target.value);
+                      setWarning(null);
+                      setNeedsConfirmation(false);
+                    }}
+                    min={stats.lastMileage}
+                    step="1"
+                    required
+                    disabled={isPending}
+                    className="w-full rounded-lg border border-input bg-background px-4 py-3 text-lg font-semibold ring-offset-background outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+                    placeholder="Inserisci KM"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">
+                    km
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Ultimo rilevamento: {stats.lastMileage.toLocaleString('it-IT')} km
+                </p>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsKmModalOpen(false);
+                    setError(null);
+                    setWarning(null);
+                    setNeedsConfirmation(false);
+                  }}
+                  disabled={isPending}
+                  className="flex-1 px-4 py-2 rounded-lg border border-input bg-background hover:bg-secondary transition-colors disabled:opacity-50"
+                >
+                  Annulla
+                </button>
+                <button
+                  type="submit"
+                  disabled={isPending}
+                  className={cn(
+                    "flex-1 px-4 py-2 rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2",
+                    needsConfirmation 
+                      ? "bg-yellow-600 dark:bg-yellow-500 text-white hover:bg-yellow-700 dark:hover:bg-yellow-600"
+                      : "bg-primary text-primary-foreground hover:bg-primary/90"
+                  )}
+                >
+                  {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {needsConfirmation ? "Conferma comunque" : "Salva"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

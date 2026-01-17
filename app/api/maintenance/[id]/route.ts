@@ -14,6 +14,8 @@ const updateMaintenanceSchema = z.object({
   cost: z.number().min(0).optional(),
   mileage: z.number().int().positive(),
   notes: z.string().optional(),
+  tireType: z.enum(["ESTIVE", "INVERNALI", "QUATTRO_STAGIONI"]).optional(),
+  tireStorageLocation: z.string().optional(),
 });
 
 export async function PUT(
@@ -32,7 +34,7 @@ export async function PUT(
       return badRequestResponse(validation.error.issues[0].message);
     }
 
-    const { date, type, cost, mileage, notes } = validation.data;
+    const { date, type, cost, mileage, notes, tireType, tireStorageLocation } = validation.data;
 
     const existingRecord = await prisma.maintenanceRecord.findUnique({
       where: { id },
@@ -42,15 +44,31 @@ export async function PUT(
       return notFoundResponse("Intervento non trovato");
     }
 
+    // Prepara i dati per l'aggiornamento
+    const dataToUpdate: any = {
+      date: new Date(date),
+      type,
+      cost,
+      mileage,
+      notes: notes || null,
+    };
+
+    // Aggiungi campi specifici per le gomme solo se il tipo è GOMME
+    if (type === "GOMME") {
+      dataToUpdate.tireType = tireType || null;
+      dataToUpdate.tireStorageLocation = 
+        tireType && tireType !== "QUATTRO_STAGIONI" && tireStorageLocation 
+          ? tireStorageLocation 
+          : null;
+    } else {
+      // Se cambia tipo e non è più GOMME, resetta i campi gomme
+      dataToUpdate.tireType = null;
+      dataToUpdate.tireStorageLocation = null;
+    }
+
     const updatedRecord = await prisma.maintenanceRecord.update({
       where: { id },
-      data: {
-        date: new Date(date),
-        type,
-        cost,
-        mileage,
-        notes,
-      },
+      data: dataToUpdate,
     });
 
     return successResponse(updatedRecord);

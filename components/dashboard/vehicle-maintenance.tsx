@@ -23,6 +23,8 @@ type MaintenanceRecord = {
   cost: number | null;
   mileage: number;
   notes: string | null;
+  tireType?: "ESTIVE" | "INVERNALI" | "QUATTRO_STAGIONI" | null;
+  tireStorageLocation?: string | null;
 };
 
 type VehicleMaintenanceProps = {
@@ -75,7 +77,9 @@ export default function VehicleMaintenance({
     type: "TAGLIANDO",
     cost: "",
     mileage: currentMileage,
-    notes: ""
+    notes: "",
+    tireType: "",
+    tireStorageLocation: ""
   });
 
   const resetForm = () => {
@@ -84,7 +88,9 @@ export default function VehicleMaintenance({
       type: "TAGLIANDO",
       cost: "",
       mileage: currentMileage,
-      notes: ""
+      notes: "",
+      tireType: "",
+      tireStorageLocation: ""
     });
     setEditingRecord(null);
     setError(null);
@@ -102,7 +108,9 @@ export default function VehicleMaintenance({
       type: record.type as string,
       cost: record.cost ? record.cost.toString() : "",
       mileage: record.mileage,
-      notes: record.notes || ""
+      notes: record.notes || "",
+      tireType: record.tireType || "",
+      tireStorageLocation: record.tireStorageLocation || ""
     });
     setIsModalOpen(true);
   };
@@ -142,14 +150,27 @@ export default function VehicleMaintenance({
         
         const method = editingRecord ? "PUT" : "POST";
 
+        const payload: any = {
+          date: formData.date,
+          type: formData.type,
+          cost: formData.cost ? parseFloat(formData.cost) : undefined,
+          mileage: Number(formData.mileage),
+          notes: formData.notes || undefined,
+        };
+
+        // Includi campi gomme solo se il tipo è GOMME
+        if (formData.type === "GOMME") {
+          payload.tireType = formData.tireType || undefined;
+          // Includi tireStorageLocation solo se non è vuoto e non sono 4 stagioni
+          if (formData.tireType !== "QUATTRO_STAGIONI" && formData.tireStorageLocation?.trim()) {
+            payload.tireStorageLocation = formData.tireStorageLocation.trim();
+          }
+        }
+
         const res = await fetch(url, {
           method,
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ...formData,
-            cost: formData.cost ? parseFloat(formData.cost) : undefined,
-            mileage: Number(formData.mileage)
-          }),
+          body: JSON.stringify(payload),
         });
 
         const data = await res.json();
@@ -235,7 +256,11 @@ export default function VehicleMaintenance({
                 </tr>
               ) : (
                 records.map((record) => (
-                  <tr key={record.id} className="transition hover:bg-muted/50 group">
+                  <tr 
+                    key={record.id} 
+                    onClick={() => openEditModal(record)}
+                    className="transition hover:bg-muted/50 group cursor-pointer"
+                  >
                     <td className="whitespace-nowrap px-6 py-4 text-sm font-medium text-foreground">
                       {format(new Date(record.date), "dd/MM/yyyy")}
                     </td>
@@ -250,20 +275,46 @@ export default function VehicleMaintenance({
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-muted-foreground">
                       {record.cost ? `€ ${Number(record.cost).toFixed(2)}` : "-"}
                     </td>
-                    <td className="px-6 py-4 text-sm text-muted-foreground max-w-xs truncate">
-                      {record.notes || "-"}
+                    <td className="px-6 py-4 text-sm text-muted-foreground max-w-xs">
+                      {record.type === "GOMME" && record.tireType ? (
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="inline-flex rounded bg-blue-100 dark:bg-blue-900/30 px-2 py-0.5 text-xs font-medium text-blue-700 dark:text-blue-300">
+                              {record.tireType === "ESTIVE" && "Estive"}
+                              {record.tireType === "INVERNALI" && "Invernali"}
+                              {record.tireType === "QUATTRO_STAGIONI" && "4 Stagioni"}
+                            </span>
+                          </div>
+                          {record.tireStorageLocation && (
+                            <div className="text-xs text-muted-foreground">
+                              📍 {record.tireStorageLocation}
+                            </div>
+                          )}
+                          {record.notes && (
+                            <div className="text-xs truncate">{record.notes}</div>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="truncate block">{record.notes || "-"}</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-right text-sm font-medium">
                       <div className="flex items-center justify-end gap-2">
                         <button
-                          onClick={() => openEditModal(record)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEditModal(record);
+                          }}
                           className="p-2 text-muted-foreground hover:text-primary transition-colors"
                           title="Modifica"
                         >
                           <Edit className="h-4 w-4" />
                         </button>
                         <button
-                          onClick={() => handleDelete(record.id)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(record.id);
+                          }}
                           className="p-2 text-muted-foreground hover:text-destructive transition-colors"
                           title="Elimina"
                         >
@@ -364,6 +415,43 @@ export default function VehicleMaintenance({
                   placeholder="Dettagli intervento..."
                 />
               </div>
+
+              {/* Campi specifici per cambio gomme */}
+              {formData.type === "GOMME" && (
+                <>
+                  <div>
+                    <label className="block text-sm font-semibold text-foreground mb-2">
+                      Tipo Gomme *
+                    </label>
+                    <select
+                      className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+                      value={formData.tireType}
+                      onChange={(e) => setFormData({ ...formData, tireType: e.target.value, tireStorageLocation: e.target.value === "QUATTRO_STAGIONI" ? "" : formData.tireStorageLocation })}
+                      required
+                    >
+                      <option value="">Seleziona tipo...</option>
+                      <option value="ESTIVE">Estive</option>
+                      <option value="INVERNALI">Invernali</option>
+                      <option value="QUATTRO_STAGIONI">4 Stagioni</option>
+                    </select>
+                  </div>
+
+                  {formData.tireType && formData.tireType !== "QUATTRO_STAGIONI" && (
+                    <div>
+                      <label className="block text-sm font-semibold text-foreground mb-2">
+                        Dove sono le gomme smontate?
+                      </label>
+                      <input
+                        type="text"
+                        className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm"
+                        value={formData.tireStorageLocation}
+                        onChange={(e) => setFormData({ ...formData, tireStorageLocation: e.target.value })}
+                        placeholder="Es: Garage, Gommista Mario, etc."
+                      />
+                    </div>
+                  )}
+                </>
+              )}
 
               <div className="flex justify-end gap-3 pt-4">
                 <button

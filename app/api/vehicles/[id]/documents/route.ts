@@ -18,7 +18,9 @@ export async function POST(
     const { id } = await params;
     const formData = await req.formData();
     const file = formData.get("file") as File;
-    const title = formData.get("title") as string;
+    const titleInput = formData.get("title") as string;
+    const documentType = formData.get("documentType") as string;
+    const yearStr = formData.get("year") as string | null;
     const notes = formData.get("notes") as string | null;
     const expiryDateStr = formData.get("expiryDate") as string | null;
 
@@ -30,8 +32,31 @@ export async function POST(
       return badRequestResponse("Tipo di file non supportato. Usa PDF o immagini.");
     }
 
-    if (!title) {
-      return badRequestResponse("Il titolo è obbligatorio");
+    if (!documentType || !["LIBRETTO_CIRCOLAZIONE", "ASSICURAZIONE", "ALTRO"].includes(documentType)) {
+      return badRequestResponse("Tipo di documento non valido");
+    }
+
+    // Genera automaticamente il titolo in base al tipo
+    let title: string;
+    let year: number | null = null;
+    
+    if (documentType === "LIBRETTO_CIRCOLAZIONE") {
+      title = "Libretto di circolazione";
+    } else if (documentType === "ASSICURAZIONE") {
+      if (!yearStr) {
+        return badRequestResponse("L'anno è obbligatorio per l'assicurazione");
+      }
+      year = parseInt(yearStr, 10);
+      if (isNaN(year) || year < 1900 || year > 2100) {
+        return badRequestResponse("Anno non valido");
+      }
+      title = `Assicurazione ${year}`;
+    } else {
+      // ALTRO - il titolo è obbligatorio
+      if (!titleInput) {
+        return badRequestResponse("Il titolo è obbligatorio");
+      }
+      title = titleInput;
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
@@ -46,7 +71,9 @@ export async function POST(
     const document = await prisma.vehicleDocument.create({
       data: {
         vehicleId: id,
+        documentType: documentType as "LIBRETTO_CIRCOLAZIONE" | "ASSICURAZIONE" | "ALTRO",
         title,
+        year,
         fileUrl,
         fileType: file.type,
         notes,

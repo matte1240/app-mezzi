@@ -14,6 +14,8 @@ const createMaintenanceSchema = z.object({
   cost: z.number().min(0).optional(),
   mileage: z.number().int().positive(),
   notes: z.string().optional(),
+  tireType: z.enum(["ESTIVE", "INVERNALI", "QUATTRO_STAGIONI"]).optional(),
+  tireStorageLocation: z.string().optional(),
 });
 
 export async function GET(
@@ -61,7 +63,7 @@ export async function POST(
       return badRequestResponse(validation.error.issues[0].message);
     }
 
-    const { date, type, cost, mileage, notes } = validation.data;
+    const { date, type, cost, mileage, notes, tireType, tireStorageLocation } = validation.data;
 
     const vehicle = await prisma.vehicle.findUnique({
       where: { id },
@@ -71,15 +73,27 @@ export async function POST(
       return notFoundResponse("Veicolo non trovato");
     }
 
+    // Prepara i dati per la creazione
+    const dataToCreate: any = {
+      vehicleId: id,
+      date: new Date(date),
+      type,
+      cost,
+      mileage,
+      notes: notes || null,
+    };
+
+    // Aggiungi campi specifici per le gomme solo se il tipo è GOMME
+    if (type === "GOMME") {
+      dataToCreate.tireType = tireType || null;
+      dataToCreate.tireStorageLocation = 
+        tireType && tireType !== "QUATTRO_STAGIONI" && tireStorageLocation 
+          ? tireStorageLocation 
+          : null;
+    }
+
     const maintenance = await prisma.maintenanceRecord.create({
-      data: {
-        vehicleId: id,
-        date: new Date(date),
-        type,
-        cost,
-        mileage,
-        notes,
-      },
+      data: dataToCreate,
     });
 
     return successResponse(maintenance, 201);

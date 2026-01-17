@@ -82,6 +82,8 @@ export default async function VehicleDetailPage({ params }: Props) {
     cost: record.cost ? record.cost.toNumber() : null,
     mileage: record.mileage,
     notes: record.notes,
+    tireType: record.tireType,
+    tireStorageLocation: record.tireStorageLocation,
   }));
 
   const formattedRefueling = vehicle.refueling.map((record) => ({
@@ -95,7 +97,9 @@ export default async function VehicleDetailPage({ params }: Props) {
 
   const formattedDocuments = vehicle.documents.map((doc) => ({
     id: doc.id,
+    documentType: doc.documentType,
     title: doc.title,
+    year: doc.year,
     fileUrl: doc.fileUrl,
     fileType: doc.fileType,
     expiryDate: doc.expiryDate ? doc.expiryDate.toISOString() : null,

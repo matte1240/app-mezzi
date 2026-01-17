@@ -90,3 +90,39 @@ export async function POST(req: Request) {
     return handleError(error);
   }
 }
+
+export async function DELETE(req: Request) {
+  try {
+    const { session, error } = await requireAuth();
+    if (error) return error;
+
+    const { searchParams } = new URL(req.url);
+    const id = searchParams.get("id");
+
+    if (!id) {
+      return badRequestResponse("ID del log non specificato");
+    }
+
+    // Verifica che il log esista e appartenga all'utente (o che l'utente sia admin)
+    const log = await prisma.vehicleLog.findUnique({
+      where: { id },
+    });
+
+    if (!log) {
+      return badRequestResponse("Log non trovato");
+    }
+
+    // Solo admin o il proprietario del log possono eliminarlo
+    if (session.user.role !== "ADMIN" && log.userId !== session.user.id) {
+      return badRequestResponse("Non hai i permessi per eliminare questo log");
+    }
+
+    await prisma.vehicleLog.delete({
+      where: { id },
+    });
+
+    return successResponse({ message: "Log eliminato con successo" });
+  } catch (error) {
+    return handleError(error);
+  }
+}
