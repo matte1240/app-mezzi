@@ -187,16 +187,15 @@ export function ManageServer() {
   };
 
   return (
-    <div className="min-h-screen bg-background py-8 px-4">
-      <div className="max-w-6xl mx-auto">
+    <div className="flex-1 space-y-4 p-4 md:px-12 md:py-8 pt-6">
         <Card>
           <div className="flex items-center gap-3 mb-6">
             <div className="p-2 bg-primary/10 rounded-lg">
               <Database className="w-6 h-6 text-primary" />
             </div>
-            <h1 className="text-3xl font-bold text-foreground">
+            <h2 className="text-3xl font-bold tracking-tight">
               Gestione Server
-            </h1>
+            </h2>
           </div>
 
           {/* Alerts */}
@@ -336,7 +335,6 @@ export function ManageServer() {
             )}
           </div>
         </Card>
-      </div>
     </div>
   );
 }

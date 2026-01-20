@@ -1,5 +1,6 @@
 import { z } from "zod";
 import prisma from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { requireAdmin } from "@/lib/api-middleware";
 import {
   successResponse,
@@ -74,7 +75,7 @@ export async function POST(
     }
 
     // Prepara i dati per la creazione
-    const dataToCreate: any = {
+    const dataToCreate: Prisma.MaintenanceRecordUncheckedCreateInput = {
       vehicleId: id,
       date: new Date(date),
       type,

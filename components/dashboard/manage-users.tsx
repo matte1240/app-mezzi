@@ -294,11 +294,11 @@ export default function ManageUsers({ users, currentUserId }: ManageUsersProps) 
   };
 
   return (
-    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+    <div className="flex-1 space-y-4 p-4 md:px-12 md:py-8 pt-6">
       {/* Header with Create Button */}
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">
+          <h2 className="text-3xl font-bold tracking-tight">
             Gestione Utenti
           </h2>
         </div>

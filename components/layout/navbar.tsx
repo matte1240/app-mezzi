@@ -13,6 +13,7 @@ import {
   Map,
   Server,
   Users,
+  Fuel,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -74,8 +75,13 @@ export default function Navbar({
       icon: <Truck className="w-4 h-4" />,
     },
     {
+      href: "/dashboard/refueling",
+      label: "Rifornimenti",
+      icon: <Fuel className="w-4 h-4" />,
+    },
+    {
       href: "/dashboard/vehicle-logs",
-      label: "Registro Mezzi",
+      label: "Registro Viaggi",
       icon: <Map className="w-4 h-4" />,
     },
     {
@@ -93,7 +99,7 @@ export default function Navbar({
   const employeeLinks = [
     {
       href: "/dashboard/vehicle-logs",
-      label: "Registro Mezzi",
+      label: "Registro Viaggi",
       icon: <Map className="w-4 h-4" />,
     },
   ];
@@ -103,7 +109,7 @@ export default function Navbar({
   return (
     <>
       <nav className="bg-background/80 backdrop-blur-md border-b border-border/40 sticky top-0 z-50 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full px-4 md:px-12">
           <div className="flex justify-between items-center h-16">
             {/* Mobile Menu Button */}
             <button

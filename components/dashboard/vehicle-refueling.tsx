@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { format } from "date-fns";
+import { format, startOfMonth, endOfMonth } from "date-fns";
 import { 
   Fuel, 
   Plus, 
@@ -35,6 +35,21 @@ export default function VehicleRefueling({
 }: VehicleRefuelingProps) {
   const router = useRouter();
   const [records, setRecords] = useState<RefuelingRecord[]>(initialRecords);
+  
+  // Filter state
+  const [filterStartDate, setFilterStartDate] = useState(format(startOfMonth(new Date()), "yyyy-MM-dd"));
+  const [filterEndDate, setFilterEndDate] = useState(format(endOfMonth(new Date()), "yyyy-MM-dd"));
+
+  const filteredRecords = records.filter(record => {
+    const recordDate = new Date(record.date);
+    const start = new Date(filterStartDate);
+    const end = new Date(filterEndDate);
+    // Adjust end date to include the full day
+    end.setHours(23, 59, 59, 999);
+    
+    return recordDate >= start && recordDate <= end;
+  });
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState<RefuelingRecord | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -169,6 +184,31 @@ export default function VehicleRefueling({
         </button>
       </div>
 
+      <div className="flex flex-wrap items-end gap-4 rounded-lg border bg-card p-4 shadow-sm">
+        <div className="space-y-2">
+          <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+            Dal
+          </label>
+          <input
+            type="date"
+            value={filterStartDate}
+            onChange={(e) => setFilterStartDate(e.target.value)}
+            className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+          />
+        </div>
+        <div className="space-y-2">
+          <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+            Al
+          </label>
+          <input
+            type="date"
+            value={filterEndDate}
+            onChange={(e) => setFilterEndDate(e.target.value)}
+            className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+          />
+        </div>
+      </div>
+
        {/* List */}
       <div className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
         <div className="overflow-x-auto">
@@ -184,14 +224,14 @@ export default function VehicleRefueling({
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {records.length === 0 ? (
+              {filteredRecords.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">
-                    Nessun rifornimento registrato
+                    {records.length === 0 ? "Nessun rifornimento registrato" : "Nessun rifornimento nel periodo selezionato"}
                   </td>
                 </tr>
               ) : (
-                records.map((record) => (
+                filteredRecords.map((record) => (
                   <tr key={record.id} className="group hover:bg-muted/50">
                     <td className="whitespace-nowrap px-6 py-4">
                       {format(new Date(record.date), "d MMM yyyy")}

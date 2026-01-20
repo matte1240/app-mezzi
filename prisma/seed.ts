@@ -42,7 +42,7 @@ async function main() {
     role: "ADMIN",
   });
 
-  const employee = await ensureUser({
+  await ensureUser({
     email: "employee@example.com",
     name: "Employee User",
     password: "Employee123!",

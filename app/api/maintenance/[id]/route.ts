@@ -1,5 +1,6 @@
 import { z } from "zod";
 import prisma from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { requireAdmin } from "@/lib/api-middleware";
 import {
   successResponse,
@@ -45,7 +46,7 @@ export async function PUT(
     }
 
     // Prepara i dati per l'aggiornamento
-    const dataToUpdate: any = {
+    const dataToUpdate: Prisma.MaintenanceRecordUpdateInput = {
       date: new Date(date),
       type,
       cost,

@@ -114,7 +114,7 @@ export default function EmployeeProfile({ user }: EmployeeProfileProps) {
   };
 
   return (
-    <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-8">
+    <div className="flex-1 space-y-4 p-4 md:px-12 md:py-8 pt-6">
       {/* Profile Header */}
       <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden mb-6">
         <div className="bg-gradient-to-r from-primary/80 to-primary h-32"></div>
@@ -158,7 +158,7 @@ export default function EmployeeProfile({ user }: EmployeeProfileProps) {
             </div>
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">{user.name || "N/A"}</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground">{user.name || "N/A"}</h1>
             <p className="text-muted-foreground">{user.email}</p>
             <div className="mt-2">
               <span className={cn(

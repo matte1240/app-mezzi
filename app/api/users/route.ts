@@ -10,8 +10,6 @@ import {
   handleError,
 } from "@/lib/api-responses";
 
-type UserRole = "EMPLOYEE" | "ADMIN";
-
 const createUserSchema = z.object({
   email: z.string().email(),
   name: z.string().min(1).max(100),

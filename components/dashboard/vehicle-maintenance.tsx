@@ -150,7 +150,7 @@ export default function VehicleMaintenance({
         
         const method = editingRecord ? "PUT" : "POST";
 
-        const payload: any = {
+        const payload: Record<string, unknown> = {
           date: formData.date,
           type: formData.type,
           cost: formData.cost ? parseFloat(formData.cost) : undefined,
