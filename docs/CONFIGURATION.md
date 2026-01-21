@@ -39,9 +39,11 @@ The application is configured via `.env` file. See `.env.example` for a template
 |----------|-------------|
 | `POSTGRES_PASSWORD` | Database password |
 | `NEXTAUTH_SECRET` | Secret for session encryption (generate with `openssl rand -base64 32`) |
-| `NEXTAUTH_URL` | URL of the application (e.g., `http://localhost:3000`) |
-| `APP_URL` | Public URL of the application |
+| `NEXTAUTH_URL` | **⚠️ CRITICAL**: Full URL of the application including protocol and domain (e.g., `https://yourdomain.com`). Must be set correctly in production to avoid redirect issues. |
+| `APP_URL` | Public URL of the application (used for email links) |
 | `NODE_ENV` | `development` or `production` |
+
+> **Important**: In production, ensure `NEXTAUTH_URL` is set to your actual domain (e.g., `https://app.example.com`), not `localhost`. This prevents login/logout redirect issues.
 
 ---
 
