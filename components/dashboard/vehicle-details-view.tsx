@@ -46,10 +46,10 @@ type VehicleDetailsViewProps = {
       id: string;
       date: string;
       initialKm: number;
-      finalKm: number;
+      finalKm: number | null;
       startTime: string;
-      endTime: string;
-      route: string;
+      endTime: string | null;
+      route: string | null;
       user: {
         name: string | null;
         email: string;
@@ -634,7 +634,7 @@ export default function VehicleDetailsView({
                     <div className="flex-1">
                       <p className="text-sm font-medium text-blue-900 dark:text-blue-100">Ultima rilevazione manuale</p>
                       <p className="text-xs text-blue-700 dark:text-blue-300 mt-1">
-                        {lastManualLog.finalKm.toLocaleString('it-IT')} km - {format(new Date(lastManualLog.date), "dd/MM/yyyy")}
+                        {(lastManualLog.finalKm ?? 0).toLocaleString('it-IT')} km - {format(new Date(lastManualLog.date), "dd/MM/yyyy")}
                       </p>
                     </div>
                     <button

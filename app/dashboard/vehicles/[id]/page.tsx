@@ -110,7 +110,7 @@ export default async function VehicleDetailPage({ params }: Props) {
   const lastLog = vehicle.logs[0];
   const lastRefueling = vehicle.refueling[0];
 
-  const lastLogKm = lastLog ? lastLog.finalKm : 0;
+  const lastLogKm = lastLog?.finalKm ?? 0;
   const lastRefuelingKm = lastRefueling ? lastRefueling.mileage : 0;
   const lastMaintenanceKm = vehicle.maintenance.reduce((max, r) => Math.max(max, r.mileage), 0);
   const lastMileage = Math.max(lastLogKm, lastRefuelingKm, lastMaintenanceKm);

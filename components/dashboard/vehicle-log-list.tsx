@@ -9,10 +9,10 @@ type VehicleLog = {
   id: string;
   date: string;
   initialKm: number;
-  finalKm: number;
+  finalKm: number | null;
   startTime: string;
-  endTime: string;
-  route: string;
+  endTime: string | null;
+  route: string | null;
   vehicle: {
     plate: string;
     name: string;
@@ -97,22 +97,22 @@ export default function VehicleLogList({ logs }: VehicleLogListProps) {
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-muted-foreground">
                       <div className="flex items-center">
                         <Clock className="mr-2 h-3 w-3" />
-                        {log.startTime} - {log.endTime}
+                        {log.startTime} {log.endTime ? `- ${log.endTime}` : ""}
                       </div>
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 text-sm text-muted-foreground">
                       <div className="flex items-center">
                         <Gauge className="mr-2 h-3 w-3" />
-                        {log.finalKm - log.initialKm} km
+                        {log.finalKm ? `${log.finalKm - log.initialKm} km` : "-"}
                       </div>
                       <span className="text-xs text-muted-foreground">
-                        ({log.initialKm} - {log.finalKm})
+                        ({log.initialKm} - {log.finalKm ?? "?"})
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-muted-foreground max-w-xs truncate">
                       <div className="flex items-center">
                         <MapPin className="mr-2 h-3 w-3 flex-shrink-0" />
-                        <span className="truncate">{log.route}</span>
+                        <span className="truncate">{log.route || "-"}</span>
                       </div>
                     </td>
                   </tr>
