@@ -23,7 +23,16 @@ export async function GET() {
             { finalKm: "desc" },
           ],
           select: {
+            id: true,
+            initialKm: true,
             finalKm: true,
+            startTime: true,
+            userId: true,
+            user: {
+                select: {
+                    name: true
+                }
+            }
           },
         },
       },
@@ -32,13 +41,32 @@ export async function GET() {
       },
     });
 
-    const formattedVehicles = vehicles.map((v) => ({
-      id: v.id,
-      plate: v.plate,
-      name: v.name,
-      type: v.type,
-      lastMileage: v.logs[0]?.finalKm || 0,
-    }));
+    const formattedVehicles = vehicles.map((v) => {
+        const lastLog = v.logs[0];
+        // If finalKm is null, it's an OPEN trip
+        // OR if there's a log, finalKm *might* be null.
+        // Wait, the orderBy finalKm desc will put nulls last usually.
+        // We should explicitly look for open logs.
+        // But for "lastMileage", we need the last *closed* log really, OR the current open log's initialKm?
+        // Actually, let's just inspect the latest log.
+        
+        const isOpen = lastLog && lastLog.finalKm === null;
+        
+        return {
+            id: v.id,
+            plate: v.plate,
+            name: v.name,
+            type: v.type,
+            lastMileage: lastLog ? (lastLog.finalKm ?? lastLog.initialKm) : 0,
+            currentTrip: isOpen ? {
+                id: lastLog.id,
+                userId: lastLog.userId,
+                userName: lastLog.user.name,
+                startTime: lastLog.startTime,
+                initialKm: lastLog.initialKm
+            } : null
+        };
+    });
 
     return successResponse(formattedVehicles);
   } catch (error) {

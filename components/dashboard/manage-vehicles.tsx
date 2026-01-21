@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import QRCode from "react-qr-code";
 import { 
   Plus, 
   Edit, 
@@ -12,7 +13,8 @@ import {
   CheckCircle,
   Loader2,
   AlertTriangle,
-  History
+  History,
+  QrCode
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Vehicle, VehicleStatus } from "@/types/models";
@@ -49,6 +51,13 @@ export default function ManageVehicles({ vehicles }: ManageVehiclesProps) {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingVehicle, setEditingVehicle] = useState<Vehicle | null>(null);
   const [deletingVehicle, setDeletingVehicle] = useState<Vehicle | null>(null);
+  const [viewingQR, setViewingQR] = useState<Vehicle | null>(null);
+  const [origin, setOrigin] = useState("");
+  
+  // Initialize origin on client side
+  useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
 
   // Form states
   const [formData, setFormData] = useState<VehicleForm>(initialFormState);
@@ -309,6 +318,14 @@ export default function ManageVehicles({ vehicles }: ManageVehiclesProps) {
                         >
                           <History className="h-4 w-4" />
                           Dettaglio
+                        </button>
+                        <button
+                          onClick={() => setViewingQR(vehicle)}
+                          className="inline-flex items-center gap-1 rounded-lg bg-blue-100 px-3 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-200 cursor-pointer dark:bg-blue-900/30 dark:text-blue-400"
+                          title="Mostra QR Code"
+                        >
+                          <QrCode className="h-4 w-4" />
+                          QR
                         </button>
                         <button
                           onClick={() => openEditModal(vehicle)}
@@ -591,6 +608,44 @@ export default function ManageVehicles({ vehicles }: ManageVehiclesProps) {
                 {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
                 Elimina
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* QR Code Modal */}
+      {viewingQR && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-sm rounded-xl bg-card border border-border shadow-2xl p-6 relative">
+            <button
+                onClick={() => setViewingQR(null)}
+                className="absolute top-4 right-4 rounded-lg p-1 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+            >
+                <X className="h-5 w-5" />
+            </button>
+            
+            <div className="text-center space-y-4">
+                <h3 className="text-xl font-bold">{viewingQR.name}</h3>
+                <p className="text-muted-foreground font-mono">{viewingQR.plate}</p>
+                
+                <div className="bg-white p-4 rounded-xl inline-block">
+                     {origin && (
+                        <QRCode 
+                            value={`${origin}/dashboard/scan?vehicleId=${viewingQR.id}`}
+                            size={200}
+                        />
+                     )}
+                </div>
+                
+                <p className="text-xs text-muted-foreground break-all">
+                    {origin ? `${origin}/dashboard/scan?vehicleId=${viewingQR.id}` : "Caricamento..."}
+                </p>
+
+                <div className="pt-2">
+                    <p className="text-xs text-muted-foreground">
+                        Scansiona questo codice per registrare rapidamente un viaggio.
+                    </p>
+                </div>
             </div>
           </div>
         </div>

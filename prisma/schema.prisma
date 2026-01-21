@@ -95,10 +95,10 @@ model VehicleLog {
   vehicleId String
   date      DateTime
   initialKm Int
-  finalKm   Int
+  finalKm   Int?
   startTime String
-  endTime   String
-  route     String
+  endTime   String?
+  route     String?
   notes     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

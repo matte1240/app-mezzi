@@ -10,15 +10,27 @@ import {
 const createLogSchema = z.object({
   vehicleId: z.string().min(1, "Seleziona un veicolo"),
   date: z.string().refine((val) => !isNaN(Date.parse(val)), "Data non valida"),
-  initialKm: z.number().min(0, "I km iniziali devono essere positivi"),
-  finalKm: z.number().min(0, "I km finali devono essere positivi"),
+  initialKm: z.number().int("I km devono essere un numero intero").min(0, "I km iniziali devono essere positivi"),
+  finalKm: z.number().int("I km devono essere un numero intero").min(0, "I km finali devono essere positivi").optional().nullable(),
   startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato ora non valido (HH:mm)"),
-  endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato ora non valido (HH:mm)"),
-  route: z.string().min(1, "Inserisci la tratta percorsa"),
+  endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato ora non valido (HH:mm)").optional().nullable(),
+  route: z.string().min(1, "Inserisci la tratta percorsa").optional().nullable(),
   notes: z.string().optional(),
-}).refine((data) => data.finalKm >= data.initialKm, {
+}).refine((data) => {
+    if (data.finalKm !== null && data.finalKm !== undefined) {
+        return data.finalKm >= data.initialKm;
+    }
+    return true;
+}, {
   message: "I km finali devono essere maggiori o uguali ai km iniziali",
   path: ["finalKm"],
+});
+
+const updateLogSchema = z.object({
+    finalKm: z.number().int().positive(),
+    endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato ora non valido (HH:mm)"),
+    route: z.string().min(1, "Inserisci la tratta percorsa"),
+    notes: z.string().optional()
 });
 
 export async function GET(req: Request) {
@@ -71,17 +83,23 @@ export async function POST(req: Request) {
 
     const { vehicleId, date, initialKm, finalKm, startTime, endTime, route, notes } = validation.data;
 
+    // Ensure we handle undefined values for optional fields by defaulting to null
+    // or relying on Prisma's optional/nullable handling.
+    // However, validation.data.finalKm might be undefined.
+    // If the schema expects Int?, passing undefined is valid for "do not set", 
+    // but explicit null is safer if we want to ensure it's NULL in DB.
+    
     const log = await prisma.vehicleLog.create({
       data: {
         userId: session.user.id,
         vehicleId,
         date: new Date(date),
         initialKm,
-        finalKm,
+        finalKm: finalKm ?? null,
         startTime,
-        endTime,
-        route,
-        notes,
+        endTime: endTime ?? null,
+        route: route ?? null,
+        notes: notes ?? null,
       },
     });
 
@@ -125,4 +143,49 @@ export async function DELETE(req: Request) {
   } catch (error) {
     return handleError(error);
   }
+}
+
+export async function PUT(req: Request) {
+    try {
+        const { session, error } = await requireAuth();
+        if (error) return error;
+
+        const body = await req.json();
+        const { id, ...data } = body;
+
+        if (!id) {
+            return badRequestResponse("ID del log mancante");
+        }
+
+        const valid = updateLogSchema.safeParse(data);
+        if (!valid.success) {
+             return badRequestResponse(valid.error.issues[0].message);
+        }
+
+        const log = await prisma.vehicleLog.findUnique({ where: { id }});
+        if (!log) return badRequestResponse("Log non trovato");
+        
+        if (session.user.role !== "ADMIN" && log.userId !== session.user.id) {
+             return badRequestResponse("Non autorizzato");
+        }
+
+        if (valid.data.finalKm < log.initialKm) {
+             return badRequestResponse("Km finali minori di km iniziali");
+        }
+
+        const updated = await prisma.vehicleLog.update({
+            where: { id },
+            data: {
+                finalKm: valid.data.finalKm,
+                endTime: valid.data.endTime,
+                route: valid.data.route,
+                notes: valid.data.notes || log.notes
+            }
+        });
+
+        return successResponse(updated);
+
+    } catch(error) {
+        return handleError(error);
+    }
 }
