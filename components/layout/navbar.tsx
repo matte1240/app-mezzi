@@ -37,7 +37,9 @@ export default function Navbar({
 
   const handleLogout = () => {
     startTransition(async () => {
-      await signOut({ callbackUrl: "/" });
+      // Use redirect: false and handle navigation manually to avoid localhost redirect issues
+      await signOut({ redirect: false });
+      window.location.href = "/";
     });
   };
 

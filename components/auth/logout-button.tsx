@@ -2,18 +2,19 @@
 
 import { signOut } from "next-auth/react";
 import { useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { LogOut, Loader2 } from "lucide-react";
 
 export default function LogoutButton() {
   const [isPending, startTransition] = useTransition();
+  const router = useRouter();
 
   const handleLogout = () => {
     startTransition(async () => {
-      // Use current origin to avoid localhost redirect issues
-      const callbackUrl = typeof window !== 'undefined' 
-        ? `${window.location.origin}/`
-        : '/';
-      await signOut({ callbackUrl });
+      // Use redirect: false and handle navigation manually to avoid localhost redirect issues
+      await signOut({ redirect: false });
+      router.push("/");
+      router.refresh();
     });
   };
 
