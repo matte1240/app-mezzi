@@ -32,6 +32,7 @@ type VehicleDetailsViewProps = {
     name: string;
     type: string;
     status: VehicleStatus;
+    currentAnomaly?: string | null;
     notes: string | null;
     serviceIntervalKm: number;
     registrationDate?: Date | null;
@@ -86,6 +87,12 @@ type VehicleDetailsViewProps = {
     notes: string | null;
     createdAt: string;
   }[];
+  activeAnomalies: {
+      id: string;
+      date: string;
+      description: string;
+      reporter: string;
+  }[];
 };
 
 export default function VehicleDetailsView({ 
@@ -94,7 +101,8 @@ export default function VehicleDetailsView({
   logs, 
   maintenance,
   refueling,
-  documents
+  documents,
+  activeAnomalies
 }: VehicleDetailsViewProps) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"overview" | "logs" | "maintenance" | "refueling" | "documents">("overview");
@@ -104,6 +112,26 @@ export default function VehicleDetailsView({
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const [needsConfirmation, setNeedsConfirmation] = useState(false);
+
+  const handleResolveAnomaly = async (id: string) => {
+      startTransition(async () => {
+          try {
+              const res = await fetch("/api/vehicle-logs", {
+                  method: "PUT",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                      id,
+                      isResolved: true
+                  })
+              });
+              if (res.ok) {
+                  router.refresh();
+              }
+          } catch {
+              setError("Errore durante la risoluzione");
+          }
+      });
+  };
 
   // Trova l'ultima rilevazione manuale
   const lastManualLog = logs.find(log => log.route === "Rilevazione manuale KM");
@@ -335,12 +363,7 @@ export default function VehicleDetailsView({
               )}
             </div>
           </div>
-          
-          <div className="flex flex-wrap gap-2">
-            <div className={cn("px-4 py-2 rounded-lg flex items-center gap-2", maintenanceStatus.bg, maintenanceStatus.color)}>
-              <maintenanceStatus.icon className="h-4 w-4" />
-              <span className="text-sm font-semibold">Tagliando: {maintenanceStatus.text}</span>
-            </div>
+          <div className="flex items-center gap-3">
             <button
               onClick={() => {
                 setManualKm(stats.lastMileage.toString());
@@ -354,6 +377,31 @@ export default function VehicleDetailsView({
             </button>
           </div>
         </div>
+
+        {activeAnomalies.length > 0 && (
+          <div className="mt-6 flex flex-col gap-3">
+              {activeAnomalies.map(anomaly => (
+                <div key={anomaly.id} className="flex items-center justify-between rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-destructive animate-in fade-in slide-in-from-top-2">
+                    <div className="flex items-start gap-3">
+                        <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
+                        <div className="space-y-1">
+                            <p className="text-sm font-semibold">Anomalia: {anomaly.description}</p>
+                            <p className="text-xs opacity-80">
+                                Segnalata il {format(new Date(anomaly.date), "dd/MM/yyyy HH:mm")} da {anomaly.reporter}
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => handleResolveAnomaly(anomaly.id)} 
+                        disabled={isPending}
+                        className="text-xs bg-background/50 hover:bg-background/80 border border-destructive/20 rounded px-3 py-1.5 transition-colors font-medium"
+                    >
+                        {isPending ? "..." : "Segna Risolto"}
+                    </button>
+                </div>
+              ))}
+          </div>
+        )}
 
         {/* Quick Stats Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8 pt-6 border-t border-border">
@@ -563,7 +611,9 @@ export default function VehicleDetailsView({
         )}
 
         {activeTab === "logs" && (
-          <VehicleLogList logs={logs} />
+           <VehicleLogList 
+             logs={logs}
+           />
         )}
 
         {activeTab === "maintenance" && (
@@ -572,6 +622,7 @@ export default function VehicleDetailsView({
             currentMileage={stats.lastMileage}
             serviceIntervalKm={vehicle.serviceIntervalKm}
             initialRecords={maintenance}
+            activeAnomalies={activeAnomalies}
           />
         )}
 

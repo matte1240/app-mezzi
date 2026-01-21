@@ -32,13 +32,20 @@ type VehicleMaintenanceProps = {
   currentMileage: number;
   serviceIntervalKm: number;
   initialRecords: MaintenanceRecord[];
+  activeAnomalies?: {
+      id: string;
+      date: string;
+      description: string;
+      reporter: string;
+  }[];
 };
 
 export default function VehicleMaintenance({ 
   vehicleId, 
   currentMileage, 
   serviceIntervalKm, 
-  initialRecords 
+  initialRecords,
+  activeAnomalies = []
 }: VehicleMaintenanceProps) {
   const router = useRouter();
   const [records, setRecords] = useState<MaintenanceRecord[]>(initialRecords);
@@ -79,7 +86,8 @@ export default function VehicleMaintenance({
     mileage: currentMileage,
     notes: "",
     tireType: "",
-    tireStorageLocation: ""
+    tireStorageLocation: "",
+    resolvedAnomalyIds: [] as string[]
   });
 
   const resetForm = () => {
@@ -90,7 +98,8 @@ export default function VehicleMaintenance({
       mileage: currentMileage,
       notes: "",
       tireType: "",
-      tireStorageLocation: ""
+      tireStorageLocation: "",
+      resolvedAnomalyIds: []
     });
     setEditingRecord(null);
     setError(null);
@@ -110,7 +119,8 @@ export default function VehicleMaintenance({
       mileage: record.mileage,
       notes: record.notes || "",
       tireType: record.tireType || "",
-      tireStorageLocation: record.tireStorageLocation || ""
+      tireStorageLocation: record.tireStorageLocation || "",
+      resolvedAnomalyIds: []
     });
     setIsModalOpen(true);
   };
@@ -154,6 +164,7 @@ export default function VehicleMaintenance({
           date: formData.date,
           type: formData.type,
           cost: formData.cost ? parseFloat(formData.cost) : undefined,
+          resolvedAnomalyIds: formData.resolvedAnomalyIds,
           mileage: Number(formData.mileage),
           notes: formData.notes || undefined,
         };
@@ -467,9 +478,40 @@ export default function VehicleMaintenance({
                   className="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                 >
                   {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-                  Salva
+                  {editingRecord ? "Salva Modifiche" : "Aggiungi Intervento"}
                 </button>
               </div>
+
+              {!editingRecord && activeAnomalies.length > 0 && (
+                <div className="border-t border-border pt-4 mt-2">
+                    <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                        <AlertTriangle className="h-4 w-4 text-yellow-600" />
+                        Risolvi Anomalie Segnalate
+                    </h3>
+                    <div className="space-y-2 max-h-40 overflow-y-auto bg-muted/30 p-2 rounded-lg border border-border">
+                        {activeAnomalies.map(anomaly => (
+                            <label key={anomaly.id} className="flex items-start gap-3 p-2 rounded hover:bg-muted/50 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    className="mt-1 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                    checked={formData.resolvedAnomalyIds.includes(anomaly.id)}
+                                    onChange={(e) => {
+                                        if (e.target.checked) {
+                                            setFormData(prev => ({ ...prev, resolvedAnomalyIds: [...prev.resolvedAnomalyIds, anomaly.id] }));
+                                        } else {
+                                            setFormData(prev => ({ ...prev, resolvedAnomalyIds: prev.resolvedAnomalyIds.filter(id => id !== anomaly.id) }));
+                                        }
+                                    }}
+                                />
+                                <div className="text-sm">
+                                    <p className="font-medium text-foreground">{anomaly.description}</p>
+                                    <p className="text-xs text-muted-foreground">{format(new Date(anomaly.date), "dd/MM/yyyy")} - {anomaly.reporter}</p>
+                                </div>
+                            </label>
+                        ))}
+                    </div>
+                </div>
+              )}
             </form>
           </div>
         </div>

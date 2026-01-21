@@ -2,8 +2,7 @@
 
 import { useState, useEffect, useTransition } from "react";
 import { format, startOfMonth, endOfMonth } from "date-fns";
-import { Fuel, Download, Loader2, Plus, X, AlertCircle } from "lucide-react";
-import { VehicleSelectorMulti } from "./vehicle-selector-multi";
+import { Fuel, Loader2, Plus, X, AlertCircle } from "lucide-react";
 
 type Vehicle = {
   id: string;
@@ -27,16 +26,12 @@ type RefuelingRecord = {
 
 type Props = {
   vehicles: Vehicle[];
+  userId: string;
 };
 
-export default function RefuelingPageContent({ vehicles }: Props) {
+export default function EmployeeRefuelingPageContent({ vehicles, userId }: Props) {
   const [startDate, setStartDate] = useState(format(startOfMonth(new Date()), "yyyy-MM-dd"));
   const [endDate, setEndDate] = useState(format(endOfMonth(new Date()), "yyyy-MM-dd"));
-  // Initialize with all vehicles selected
-  const [selectedVehicleIds, setSelectedVehicleIds] = useState<string[]>(() => 
-    vehicles.map(v => v.id)
-  );
-
   const [records, setRecords] = useState<RefuelingRecord[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -61,15 +56,7 @@ export default function RefuelingPageContent({ vehicles }: Props) {
       const params = new URLSearchParams();
       params.append("startDate", startDate);
       params.append("endDate", endDate);
-      if (selectedVehicleIds.length > 0) {
-         params.append("vehicleIds", selectedVehicleIds.join(","));
-      }
-      
-      if (selectedVehicleIds.length === 0) {
-          setRecords([]);
-          setIsLoading(false);
-          return;
-      }
+      params.append("userId", userId); // Filter by user
 
       const res = await fetch(`/api/refueling?${params.toString()}`);
       if (res.ok) {
@@ -85,17 +72,7 @@ export default function RefuelingPageContent({ vehicles }: Props) {
 
   useEffect(() => {
     fetchData();
-  }, [startDate, endDate, selectedVehicleIds]);
-
-  const handleExport = () => {
-    const params = new URLSearchParams();
-    params.append("startDate", startDate);
-    params.append("endDate", endDate);
-    if (selectedVehicleIds.length > 0) {
-        params.append("vehicleIds", selectedVehicleIds.join(","));
-    }
-    window.location.href = `/api/refueling/export?${params.toString()}`;
-  };
+  }, [startDate, endDate]);
 
   const handleOpenModal = () => {
     setFormData({
@@ -150,13 +127,10 @@ export default function RefuelingPageContent({ vehicles }: Props) {
     });
   };
 
-  const totalLiters = records.reduce((acc, r) => acc + r.liters, 0);
-  const totalCost = records.reduce((acc, r) => acc + r.cost, 0);
-
   return (
     <div className="flex-1 space-y-4 p-4 md:px-12 md:py-8 pt-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold tracking-tight">Rifornimenti</h2>
+        <h2 className="text-3xl font-bold tracking-tight">I Miei Rifornimenti</h2>
         <button
           onClick={handleOpenModal}
           disabled={vehicles.length === 0}
@@ -188,50 +162,7 @@ export default function RefuelingPageContent({ vehicles }: Props) {
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               />
             </div>
-            
-            <div className="space-y-2">
-               <label className="text-sm font-medium">Veicoli</label>
-               <VehicleSelectorMulti 
-                  vehicles={vehicles}
-                  selectedIds={selectedVehicleIds}
-                  onChange={setSelectedVehicleIds}
-               />
-            </div>
-
-            <button
-                onClick={handleExport}
-                disabled={records.length === 0}
-                className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
-            >
-                <Download className="h-4 w-4" />
-                Export Excel
-            </button>
           </div>
-        </div>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-6">
-            <div className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <h3 className="tracking-tight text-sm font-medium">Totale Litri</h3>
-                <Fuel className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <div className="text-2xl font-bold">{totalLiters.toFixed(2)} L</div>
-        </div>
-        <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-6">
-            <div className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <h3 className="tracking-tight text-sm font-medium">Costo Totale</h3>
-                <span className="text-muted-foreground font-bold">€</span>
-            </div>
-            <div className="text-2xl font-bold">€ {totalCost.toFixed(2)}</div>
-        </div>
-        <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-6">
-            <div className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <h3 className="tracking-tight text-sm font-medium">Rifornimenti</h3>
-                <Fuel className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <div className="text-2xl font-bold">{records.length}</div>
         </div>
       </div>
 

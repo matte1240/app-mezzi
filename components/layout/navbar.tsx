@@ -102,6 +102,11 @@ export default function Navbar({
       label: "Registro Viaggi",
       icon: <Map className="w-4 h-4" />,
     },
+    {
+      href: "/dashboard/employee/refueling",
+      label: "Rifornimenti",
+      icon: <Fuel className="w-4 h-4" />,
+    },
   ];
 
   const links = userRole === "ADMIN" ? adminLinks : employeeLinks;

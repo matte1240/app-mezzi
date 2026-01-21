@@ -283,7 +283,17 @@ export default function ManageVehicles({ vehicles }: ManageVehiclesProps) {
                       {vehicle.lastMileage.toLocaleString('it-IT')} km
                     </td>
                     <td className="whitespace-nowrap px-6 py-4">
-                      {vehicle.status === "ACTIVE" && isOverdue ? (
+                      {vehicle.currentAnomaly ? (
+                         <div className="flex flex-col items-start gap-1">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-destructive/15 px-3 py-1 text-xs font-semibold text-destructive dark:bg-destructive/30">
+                              <AlertCircle className="h-3 w-3" />
+                              Anomalia
+                            </span>
+                            <span className="text-xs text-destructive/80 max-w-[150px] truncate" title={vehicle.currentAnomaly}>
+                              {vehicle.currentAnomaly}
+                            </span>
+                         </div>
+                      ) : vehicle.status === "ACTIVE" && isOverdue ? (
                         <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-3 py-1 text-xs font-semibold text-red-700 dark:bg-red-900/30 dark:text-red-400">
                           <AlertCircle className="h-3 w-3" />
                           Tagliando Scaduto

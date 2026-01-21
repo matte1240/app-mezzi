@@ -6,7 +6,7 @@ import { Prisma } from "@prisma/client";
 export async function GET(req: Request) {
   try {
     const session = await getAuthSession();
-    if (!session || session.user.role !== "ADMIN") {
+    if (!session) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
@@ -14,6 +14,7 @@ export async function GET(req: Request) {
     const startDate = searchParams.get("startDate");
     const endDate = searchParams.get("endDate");
     const vehicleIds = searchParams.get("vehicleIds")?.split(",").filter(Boolean);
+    const userId = searchParams.get("userId");
 
     if (!startDate || !endDate) {
       return NextResponse.json(
@@ -32,6 +33,17 @@ export async function GET(req: Request) {
         lte: end,
       },
     };
+
+    // Role check logic
+    if (session.user.role === "ADMIN") {
+      // Admins can filter by userId if provided
+      if (userId) {
+        whereClause.userId = userId;
+      }
+    } else {
+      // Employees can ONLY see their own records
+      whereClause.userId = session.user.id;
+    }
 
     if (vehicleIds && vehicleIds.length > 0) {
       whereClause.vehicleId = {

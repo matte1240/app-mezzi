@@ -25,6 +25,7 @@ export type Vehicle = {
   name: string;
   type: string;
   status: VehicleStatus;
+  currentAnomaly?: string | null;
   notes?: string | null;
   serviceIntervalKm: number;
   registrationDate?: Date | null;

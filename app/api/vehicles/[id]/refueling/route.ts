@@ -1,10 +1,12 @@
 import { z } from "zod";
 import prisma from "@/lib/prisma";
+import { getAuthSession } from "@/lib/auth";
 import { requireAdmin } from "@/lib/api-middleware";
 import {
   successResponse,
   badRequestResponse,
   notFoundResponse,
+  errorResponse,
   handleError,
 } from "@/lib/api-responses";
 
@@ -50,8 +52,10 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { error } = await requireAdmin();
-    if (error) return error;
+    const session = await getAuthSession();
+    if (!session) {
+      return errorResponse("Unauthorized", 401);
+    }
 
     const { id } = await params;
     const body = await req.json();
@@ -79,6 +83,7 @@ export async function POST(
         cost,
         mileage,
         notes,
+        userId: session.user.id,
       },
     });
 

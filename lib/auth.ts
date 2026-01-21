@@ -85,23 +85,33 @@ export const authOptions: NextAuthOptions = {
         // Update lastActivity on token refresh (triggered by client)
         if (trigger === "update") {
           token.lastActivity = now;
+        }
+
+        // Validate token against DB periodically (every 1 minute) or on explicit update
+        const lastValidation = (token.lastValidation as number) || 0;
+        const validationInterval = 60 * 1000; // 1 minute
+        
+        if (trigger === "update" || (now - lastValidation > validationInterval)) {
+          console.log(`🔒 Validating session for ${token.email} (Trigger: ${trigger || 'periodic'})`);
           
-          // Only validate tokenVersion on explicit updates (not on every request)
-          // This reduces database queries significantly while still maintaining security
           const dbUser = await prisma.user.findUnique({
             where: { email: token.email },
-            select: { tokenVersion: true, image: true },
+            select: { tokenVersion: true, image: true, role: true },
           });
           
-          if (dbUser) {
-            // Update image in token
-            token.picture = dbUser.image;
+          if (!dbUser) {
+             return {}; // User no longer exists
+          }
 
-            const tokenVersionInToken = (token.tokenVersion as number) || 0;
-            if (dbUser.tokenVersion !== tokenVersionInToken) {
-              console.log(`🔒 Token invalidated for ${token.email} - password changed`);
-              return {}; // Invalidate the token
-            }
+          // Update fresh data from DB
+          token.picture = dbUser.image;
+          token.role = dbUser.role; 
+          token.lastValidation = now;
+
+          const tokenVersionInToken = (token.tokenVersion as number) || 0;
+          if (dbUser.tokenVersion !== tokenVersionInToken) {
+            console.log(`🔒 Token invalidated for ${token.email} - password changed (DB: ${dbUser.tokenVersion}, Token: ${tokenVersionInToken})`);
+            return {}; // Invalidate the token
           }
         }
         

@@ -25,11 +25,18 @@ export async function DELETE(
 
     // Try to delete physical file
     try {
-        const filePath = path.join(process.cwd(), "public", document.fileUrl);
+        // Remove leading slash if present to ensure correct path joining
+        const relativePath = document.fileUrl.startsWith('/') 
+            ? document.fileUrl.substring(1) 
+            : document.fileUrl;
+            
+        const filePath = path.join(process.cwd(), "public", relativePath);
         await unlink(filePath);
-    } catch(err) {
-        console.error("Failed to delete file:", err);
-        // Continue to delete record even if file deletion fails
+    } catch(err: any) {
+        // Ignore file not found errors, but log others
+        if (err.code !== 'ENOENT') {
+            console.error("Failed to delete file:", err);
+        }
     }
 
     await prisma.vehicleDocument.delete({

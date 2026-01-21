@@ -2,7 +2,7 @@
 
 import { useState, useTransition, FormEvent } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff, Loader2, Mail, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -13,6 +13,8 @@ const initialState = {
 
 export default function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get("callbackUrl"); 
   const [formState, setFormState] = useState(initialState);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -33,6 +35,7 @@ export default function LoginForm() {
         redirect: false,
         email: formState.email,
         password: formState.password,
+        callbackUrl: callbackUrl || "/dashboard",
       });
 
       if (result?.error) {
@@ -40,8 +43,8 @@ export default function LoginForm() {
         return;
       }
 
-      // All users go to /dashboard, which handles role-based display
-      router.push("/dashboard");
+      // Use the URL validated/returned by NextAuth
+      router.push(result?.url || "/dashboard");
       router.refresh();
     });
   };

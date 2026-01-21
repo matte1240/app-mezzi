@@ -56,6 +56,22 @@ export default async function VehicleDetailPage({ params }: Props) {
       </div>
     );
   }
+  
+  // Fetch active anomalies (logs that have anomaly, not resolved)
+  const activeAnomalies = await prisma.vehicleLog.findMany({
+      where: {
+          vehicleId: id,
+          hasAnomaly: true,
+          isResolved: false
+      },
+      orderBy: { date: 'asc' },
+      select: {
+          id: true,
+          date: true,
+          anomalyDescription: true,
+          user: { select: { name: true } }
+      }
+  });
 
   const formattedLogs = vehicle.logs.map((log) => ({
     id: log.id,
@@ -138,6 +154,7 @@ export default async function VehicleDetailPage({ params }: Props) {
           name: vehicle.name,
           type: vehicle.type,
           status: vehicle.status,
+          currentAnomaly: vehicle.currentAnomaly,
           notes: vehicle.notes,
           serviceIntervalKm: vehicle.serviceIntervalKm || 15000,
           registrationDate: vehicle.registrationDate,
@@ -152,6 +169,12 @@ export default async function VehicleDetailPage({ params }: Props) {
         maintenance={formattedMaintenance}
         refueling={formattedRefueling}
         documents={formattedDocuments}
+        activeAnomalies={activeAnomalies.map(a => ({
+            id: a.id,
+            date: a.date.toISOString(),
+            description: a.anomalyDescription || "",
+            reporter: a.user.name || "Utente"
+        }))}
       />
     </div>
   );

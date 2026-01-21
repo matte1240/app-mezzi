@@ -21,6 +21,7 @@ model User {
   accounts      Account[]
   sessions      Session[]
   vehicleLogs   VehicleLog[]
+  refuelingRecords RefuelingRecord[]
 }
 
 
@@ -72,6 +73,7 @@ model Vehicle {
   name              String
   type              String
   status            VehicleStatus       @default(ACTIVE)
+  currentAnomaly    String?
   notes             String?
   serviceIntervalKm Int                 @default(15000)
   registrationDate  DateTime?
@@ -100,6 +102,15 @@ model VehicleLog {
   endTime   String?
   route     String?
   notes     String?
+  hasAnomaly Boolean @default(false)
+  anomalyDescription String?
+  
+  // Resolution fields
+  isResolved Boolean @default(false)
+  resolvedAt DateTime?
+  resolvedByMaintenanceId String?
+  resolvedByMaintenance MaintenanceRecord? @relation(fields: [resolvedByMaintenanceId], references: [id])
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -126,6 +137,7 @@ model MaintenanceRecord {
   updatedAt       DateTime        @updatedAt
 
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  resolvedAnomalies VehicleLog[]
 
   @@index([vehicleId])
   @@index([date])
@@ -142,9 +154,12 @@ model RefuelingRecord {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
 
   @@index([vehicleId])
+  @@index([userId])
   @@index([date])
 }
 

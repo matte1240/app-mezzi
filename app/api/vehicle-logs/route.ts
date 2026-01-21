@@ -16,6 +16,8 @@ const createLogSchema = z.object({
   endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato ora non valido (HH:mm)").optional().nullable(),
   route: z.string().min(1, "Inserisci la tratta percorsa").optional().nullable(),
   notes: z.string().optional(),
+  hasAnomaly: z.boolean().optional(),
+  anomalyDescription: z.string().optional().nullable(),
 }).refine((data) => {
     if (data.finalKm !== null && data.finalKm !== undefined) {
         return data.finalKm >= data.initialKm;
@@ -27,10 +29,13 @@ const createLogSchema = z.object({
 });
 
 const updateLogSchema = z.object({
-    finalKm: z.number().int().positive(),
-    endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato ora non valido (HH:mm)"),
-    route: z.string().min(1, "Inserisci la tratta percorsa"),
-    notes: z.string().optional()
+    finalKm: z.number().int().positive().optional(),
+    endTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Formato ora non valido (HH:mm)").optional(),
+    route: z.string().min(1, "Inserisci la tratta percorsa").optional(),
+    notes: z.string().optional(),
+    hasAnomaly: z.boolean().optional(),
+    anomalyDescription: z.string().optional().nullable(),
+    isResolved: z.boolean().optional()
 });
 
 export async function GET(req: Request) {
@@ -81,13 +86,21 @@ export async function POST(req: Request) {
       return badRequestResponse(validation.error.issues[0].message);
     }
 
-    const { vehicleId, date, initialKm, finalKm, startTime, endTime, route, notes } = validation.data;
+    const { vehicleId, date, initialKm, finalKm, startTime, endTime, route, notes, hasAnomaly, anomalyDescription } = validation.data;
 
     // Ensure we handle undefined values for optional fields by defaulting to null
     // or relying on Prisma's optional/nullable handling.
     // However, validation.data.finalKm might be undefined.
     // If the schema expects Int?, passing undefined is valid for "do not set", 
     // but explicit null is safer if we want to ensure it's NULL in DB.
+
+    // If there is an anomaly reported, update the vehicle status
+    if (hasAnomaly && anomalyDescription) {
+        await prisma.vehicle.update({
+            where: { id: vehicleId },
+            data: { currentAnomaly: anomalyDescription }
+        });
+    }
     
     const log = await prisma.vehicleLog.create({
       data: {
@@ -100,6 +113,8 @@ export async function POST(req: Request) {
         endTime: endTime ?? null,
         route: route ?? null,
         notes: notes ?? null,
+        hasAnomaly: hasAnomaly ?? false,
+        anomalyDescription: anomalyDescription ?? null
       },
     });
 
@@ -169,18 +184,79 @@ export async function PUT(req: Request) {
              return badRequestResponse("Non autorizzato");
         }
 
-        if (valid.data.finalKm < log.initialKm) {
+        if (valid.data.finalKm !== undefined && valid.data.finalKm < log.initialKm) {
              return badRequestResponse("Km finali minori di km iniziali");
+        }
+
+        // Update vehicle status if anomaly reported
+        if (valid.data.hasAnomaly && valid.data.anomalyDescription) {
+             await prisma.vehicle.update({
+                 where: { id: log.vehicleId },
+                 data: { currentAnomaly: valid.data.anomalyDescription }
+             });
+        }
+        
+        // Handle resolution
+        if (valid.data.isResolved && !log.isResolved) {
+             // If manual resolution (via PUT/Edit)
+             // Check if this was the last anomaly
+             const unresolvedCount = await prisma.vehicleLog.count({
+                where: {
+                    vehicleId: log.vehicleId,
+                    hasAnomaly: true,
+                    isResolved: false,
+                    id: { not: id } // Exclude this one
+                }
+             });
+
+             if (unresolvedCount === 0) {
+                 await prisma.vehicle.update({
+                     where: { id: log.vehicleId },
+                     data: { currentAnomaly: null }
+                 });
+             } else {
+                 // Update banner to another one
+                 const other = await prisma.vehicleLog.findFirst({
+                     where: {
+                         vehicleId: log.vehicleId,
+                         hasAnomaly: true,
+                         isResolved: false,
+                         id: { not: id }
+                     },
+                     orderBy: { date: 'asc' }
+                 });
+                 if (other) {
+                    await prisma.vehicle.update({
+                        where: { id: log.vehicleId },
+                        data: { currentAnomaly: other.anomalyDescription }
+                    });
+                 }
+             }
+        }
+
+        const dataToUpdate: any = {
+            notes: valid.data.notes ?? log.notes, // Keep existing notes if not provided/undefined? Actually if undefined, Prisma ignores if we don't pass it.
+            // But here valid.data.notes is string | undefined.
+            // If we want partial updates, we should let Prisma handle undefined = skip.
+        };
+        
+        // Helper to add only defined fields
+        if (valid.data.finalKm !== undefined) dataToUpdate.finalKm = valid.data.finalKm;
+        if (valid.data.endTime !== undefined) dataToUpdate.endTime = valid.data.endTime;
+        if (valid.data.route !== undefined) dataToUpdate.route = valid.data.route;
+        if (valid.data.notes !== undefined) dataToUpdate.notes = valid.data.notes;
+        if (valid.data.hasAnomaly !== undefined) dataToUpdate.hasAnomaly = valid.data.hasAnomaly;
+        if (valid.data.anomalyDescription !== undefined) dataToUpdate.anomalyDescription = valid.data.anomalyDescription;
+        if (valid.data.isResolved !== undefined) {
+            dataToUpdate.isResolved = valid.data.isResolved;
+            if (valid.data.isResolved && !log.isResolved) {
+                dataToUpdate.resolvedAt = new Date();
+            }
         }
 
         const updated = await prisma.vehicleLog.update({
             where: { id },
-            data: {
-                finalKm: valid.data.finalKm,
-                endTime: valid.data.endTime,
-                route: valid.data.route,
-                notes: valid.data.notes || log.notes
-            }
+            data: dataToUpdate
         });
 
         return successResponse(updated);

@@ -43,6 +43,8 @@ export default function VehicleLogForm() {
     endTime: "17:00",
     route: "",
     notes: "",
+    hasAnomaly: false,
+    anomalyDescription: "",
   });
 
   const [error, setError] = useState<string | null>(null);
@@ -112,6 +114,8 @@ export default function VehicleLogForm() {
           finalKm: "",
           route: "",
           notes: "",
+          hasAnomaly: false,
+          anomalyDescription: "",
         });
         router.refresh();
       } catch {
@@ -282,6 +286,37 @@ export default function VehicleLogForm() {
               />
             </div>
           </div>
+
+          <div className="flex items-center space-x-2">
+             <input
+                type="checkbox"
+                id="hasAnomaly"
+                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                checked={formData.hasAnomaly}
+                onChange={(e) => setFormData({ ...formData, hasAnomaly: e.target.checked })}
+             />
+             <label htmlFor="hasAnomaly" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+               Segnala Anomalia
+             </label>
+          </div>
+
+          {formData.hasAnomaly && (
+            <div className="space-y-2 animate-in fade-in slide-in-from-top-2">
+                <label className="text-sm font-medium leading-none text-destructive">
+                   Dettagli Anomalia
+                </label>
+                <div className="relative">
+                   <AlertCircle className="absolute left-3 top-3 h-4 w-4 text-destructive" />
+                   <textarea
+                       required
+                       className="flex min-h-[80px] w-full rounded-md border border-destructive/50 bg-destructive/5 px-3 py-2 pl-9 text-sm ring-offset-background placeholder:text-destructive/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                       value={formData.anomalyDescription}
+                       onChange={(e) => setFormData({ ...formData, anomalyDescription: e.target.value })}
+                       placeholder="Descrivi il problema riscontrato..."
+                   />
+                </div>
+            </div>
+          )}
 
           <div className="flex justify-end">
             <button

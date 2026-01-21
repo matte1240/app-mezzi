@@ -17,6 +17,7 @@ const createMaintenanceSchema = z.object({
   notes: z.string().optional(),
   tireType: z.enum(["ESTIVE", "INVERNALI", "QUATTRO_STAGIONI"]).optional(),
   tireStorageLocation: z.string().optional(),
+  resolvedAnomalyIds: z.array(z.string()).optional(),
 });
 
 export async function GET(
@@ -64,7 +65,7 @@ export async function POST(
       return badRequestResponse(validation.error.issues[0].message);
     }
 
-    const { date, type, cost, mileage, notes, tireType, tireStorageLocation } = validation.data;
+    const { date, type, cost, mileage, notes, tireType, tireStorageLocation, resolvedAnomalyIds } = validation.data;
 
     const vehicle = await prisma.vehicle.findUnique({
       where: { id },
@@ -75,8 +76,8 @@ export async function POST(
     }
 
     // Prepara i dati per la creazione
-    const dataToCreate: Prisma.MaintenanceRecordUncheckedCreateInput = {
-      vehicleId: id,
+    const dataToCreate: Prisma.MaintenanceRecordCreateInput = {
+      vehicle: { connect: { id } },
       date: new Date(date),
       type,
       cost,
@@ -93,9 +94,61 @@ export async function POST(
           : null;
     }
 
+    // Connect resolved anomalies - using nested create/connect is not modifying the logs, 
+    // but the relation is one-to-many from Maintenance -> Log (Maintenance resolves Logs).
+    // The Schema says: resolvedAnomalies VehicleLog[]
+    // So we can connect them.
+    if (resolvedAnomalyIds && resolvedAnomalyIds.length > 0) {
+        dataToCreate.resolvedAnomalies = {
+            connect: resolvedAnomalyIds.map((id) => ({ id }))
+        };
+    }
+
     const maintenance = await prisma.maintenanceRecord.create({
       data: dataToCreate,
     });
+
+    // Also update the resolved logs to set isResolved = true and resolvedAt
+    if (resolvedAnomalyIds && resolvedAnomalyIds.length > 0) {
+        await prisma.vehicleLog.updateMany({
+            where: { id: { in: resolvedAnomalyIds } },
+            data: { 
+                isResolved: true,
+                resolvedAt: new Date(date)
+            }
+        });
+
+        // Update vehicle currentAnomaly status. 
+        // Logic: if there are no more unresolved anomalies, clear the banner.
+        // If there are still unresolved anomalies, set banner to the oldest/latest unresolved one?
+        // Let's count unresolved anomalies for this vehicle.
+        const unresolvedCount = await prisma.vehicleLog.count({
+            where: {
+                vehicleId: id,
+                hasAnomaly: true,
+                isResolved: false
+            }
+        });
+
+        if (unresolvedCount === 0) {
+            await prisma.vehicle.update({
+                where: { id },
+                data: { currentAnomaly: null }
+            });
+        } else {
+             // Optional: update banner to the next unresolved one
+             const firstUnresolved = await prisma.vehicleLog.findFirst({
+                 where: { vehicleId: id, hasAnomaly: true, isResolved: false },
+                 orderBy: { date: 'asc' }
+             });
+             if (firstUnresolved && firstUnresolved.anomalyDescription) {
+                 await prisma.vehicle.update({
+                    where: { id },
+                    data: { currentAnomaly: firstUnresolved.anomalyDescription }
+                });
+             }
+        }
+    }
 
     return successResponse(maintenance, 201);
   } catch (error) {

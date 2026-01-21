@@ -45,6 +45,8 @@ function ScanContent() {
   // Form states depending on mode
   const [initialKm, setInitialKm] = useState<number | string>("");
   const [finalKm, setFinalKm] = useState<number | string>("");
+  const [hasAnomaly, setHasAnomaly] = useState(false);
+  const [anomalyDescription, setAnomalyDescription] = useState("");
   
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -159,6 +161,8 @@ function ScanContent() {
                      finalKm: km,
                      endTime: endTimeStr,
                      route: "Viaggio completato (Scan)",
+                     hasAnomaly,
+                     anomalyDescription: hasAnomaly ? anomalyDescription : null,
                      // notes optional
                  })
              });
@@ -171,6 +175,8 @@ function ScanContent() {
              
              setSuccess("Viaggio chiuso con successo!");
              setFinalKm("");
+             setHasAnomaly(false);
+             setAnomalyDescription("");
              refreshData();
 
          } catch {
@@ -287,6 +293,33 @@ function ScanContent() {
                                 autoFocus
                              />
                         </div>
+                    </div>
+
+                    <div className="bg-background rounded-lg border p-4 space-y-4">
+                        <div className="flex items-center space-x-2">
+                           <input
+                              type="checkbox"
+                              id="scanHasAnomaly"
+                              className="h-5 w-5 rounded border-gray-300 text-destructive focus:ring-destructive"
+                              checked={hasAnomaly}
+                              onChange={(e) => setHasAnomaly(e.target.checked)}
+                           />
+                           <label htmlFor="scanHasAnomaly" className="text-sm font-medium leading-none text-foreground peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                             Segnala Anomalia / Guasto
+                           </label>
+                        </div>
+                        
+                        {hasAnomaly && (
+                           <div className="animate-in fade-in slide-in-from-top-2">
+                               <textarea
+                                   className="flex min-h-[80px] w-full rounded-md border border-destructive/50 bg-destructive/5 px-3 py-2 text-sm ring-offset-background placeholder:text-destructive/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                   placeholder="Descrivi il problema..."
+                                   value={anomalyDescription}
+                                   onChange={(e) => setAnomalyDescription(e.target.value)}
+                                   required
+                               />
+                           </div>
+                        )}
                     </div>
 
                      {error && <div className="text-destructive text-sm font-medium">{error}</div>}

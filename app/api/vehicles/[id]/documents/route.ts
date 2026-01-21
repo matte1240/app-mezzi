@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
 import { requireAdmin } from "@/lib/api-middleware";
-import { successResponse, badRequestResponse, handleError } from "@/lib/api-responses";
+import { successResponse, badRequestResponse, handleError, notFoundResponse } from "@/lib/api-responses";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 
@@ -36,6 +36,15 @@ export async function POST(
       return badRequestResponse("Tipo di documento non valido");
     }
 
+    const vehicle = await prisma.vehicle.findUnique({
+      where: { id },
+      select: { plate: true, name: true }
+    });
+
+    if (!vehicle) {
+      return notFoundResponse("Veicolo non trovato");
+    }
+
     // Genera automaticamente il titolo in base al tipo
     let title: string;
     let year: number | null = null;
@@ -60,7 +69,16 @@ export async function POST(
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());
-    const fileName = `${Date.now()}-${file.name.replace(/\s+/g, '_')}`;
+    
+    // Create a standardized filename: PLATE_TYPE_YEAR_TIMESTAMP.ext
+    const sanitizedPlate = vehicle.plate.replace(/\s+/g, '').toUpperCase();
+    const sanitizedType = documentType;
+    const yearSuffix = year ? `_${year}` : '';
+    const timestamp = Date.now();
+    const ext = path.extname(file.name) || (file.type === 'application/pdf' ? '.pdf' : '.jpg'); // fallback extension
+    
+    const fileName = `${sanitizedPlate}_${sanitizedType}${yearSuffix}_${timestamp}${ext}`;
+
     const uploadDir = path.join(process.cwd(), "public", "uploads", "documents");
     
     await mkdir(uploadDir, { recursive: true });
