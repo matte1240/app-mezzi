@@ -14,7 +14,6 @@ export default function LogoutButton() {
       // Use redirect: false and handle navigation manually to avoid localhost redirect issues
       await signOut({ redirect: false });
       router.push("/");
-      router.refresh();
     });
   };
 
