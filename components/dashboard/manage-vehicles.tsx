@@ -56,7 +56,9 @@ export default function ManageVehicles({ vehicles }: ManageVehiclesProps) {
   
   // Initialize origin on client side
   useEffect(() => {
-    setOrigin(window.location.origin);
+    if (typeof window !== 'undefined') {
+        setTimeout(() => setOrigin(window.location.origin), 0);
+    }
   }, []);
 
   // Form states

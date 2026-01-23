@@ -1,5 +1,6 @@
 import { z } from "zod";
 import prisma from "@/lib/prisma";
+import { Prisma } from "@prisma/client";
 import { requireAuth } from "@/lib/api-middleware";
 import {
   successResponse,
@@ -234,7 +235,7 @@ export async function PUT(req: Request) {
              }
         }
 
-        const dataToUpdate: any = {
+        const dataToUpdate: Prisma.VehicleLogUpdateInput = {
             notes: valid.data.notes ?? log.notes, // Keep existing notes if not provided/undefined? Actually if undefined, Prisma ignores if we don't pass it.
             // But here valid.data.notes is string | undefined.
             // If we want partial updates, we should let Prisma handle undefined = skip.

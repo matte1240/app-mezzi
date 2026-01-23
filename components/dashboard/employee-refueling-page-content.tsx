@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect, useTransition, useCallback } from "react";
 import { format, startOfMonth, endOfMonth } from "date-fns";
-import { Fuel, Loader2, Plus, X, AlertCircle } from "lucide-react";
+import { Loader2, Plus, X, AlertCircle } from "lucide-react";
 
 type Vehicle = {
   id: string;
@@ -50,7 +50,7 @@ export default function EmployeeRefuelingPageContent({ vehicles, userId }: Props
   });
 
   // Fetch data
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
       const params = new URLSearchParams();
@@ -68,11 +68,11 @@ export default function EmployeeRefuelingPageContent({ vehicles, userId }: Props
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [startDate, endDate, userId]);
 
   useEffect(() => {
     fetchData();
-  }, [startDate, endDate]);
+  }, [fetchData]);
 
   const handleOpenModal = () => {
     setFormData({

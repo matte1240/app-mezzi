@@ -39,9 +39,14 @@ export default async function VehicleDetailPage({ params }: Props) {
       },
       refueling: {
         orderBy: { date: "desc" },
+        include: { user: true },
       },
       documents: {
         orderBy: { createdAt: "desc" },
+      },
+      mileageChecks: {
+        orderBy: { date: "desc" },
+        include: { user: true },
       },
     },
   }));
@@ -57,59 +62,6 @@ export default async function VehicleDetailPage({ params }: Props) {
     );
   }
   
-  // Fetch active anomalies (logs that have anomaly, not resolved)
-  const activeAnomalies = await prisma.vehicleLog.findMany({
-      where: {
-          vehicleId: id,
-          hasAnomaly: true,
-          isResolved: false
-      },
-      orderBy: { date: 'asc' },
-      select: {
-          id: true,
-          date: true,
-          anomalyDescription: true,
-          user: { select: { name: true } }
-      }
-  });
-
-  const formattedLogs = vehicle.logs.map((log) => ({
-    id: log.id,
-    date: log.date.toISOString(),
-    initialKm: log.initialKm,
-    finalKm: log.finalKm,
-    startTime: log.startTime,
-    endTime: log.endTime,
-    route: log.route,
-    vehicle: {
-      plate: log.vehicle.plate,
-      name: log.vehicle.name,
-    },
-    user: {
-      name: log.user.name,
-      email: log.user.email,
-    },
-  }));
-
-  const formattedMaintenance = vehicle.maintenance.map((record) => ({
-    id: record.id,
-    date: record.date.toISOString(),
-    type: record.type,
-    cost: record.cost ? record.cost.toNumber() : null,
-    mileage: record.mileage,
-    notes: record.notes,
-    tireType: record.tireType,
-    tireStorageLocation: record.tireStorageLocation,
-  }));
-
-  const formattedRefueling = vehicle.refueling.map((record) => ({
-    id: record.id,
-    date: record.date.toISOString(),
-    liters: record.liters ? record.liters.toNumber() : 0,
-    cost: record.cost ? record.cost.toNumber() : 0,
-    mileage: record.mileage,
-    notes: record.notes,
-  }));
 
   const formattedDocuments = vehicle.documents.map((doc) => ({
     id: doc.id,
@@ -123,13 +75,64 @@ export default async function VehicleDetailPage({ params }: Props) {
     createdAt: doc.createdAt.toISOString(),
   }));
 
+  const historyItems = [
+    ...vehicle.logs.map(log => ({
+        id: log.id,
+        date: log.date.toISOString(),
+        type: 'LOG' as const,
+        data: {
+             initialKm: log.initialKm,
+             finalKm: log.finalKm,
+             route: log.route,
+             notes: log.notes,
+             user: { name: log.user.name || log.user.email }
+        }
+    })),
+    ...vehicle.maintenance.map(item => ({
+        id: item.id,
+        date: item.date.toISOString(),
+        type: 'MAINTENANCE' as const,
+        data: {
+            type: item.type,
+            cost: item.cost ? item.cost.toNumber() : null,
+            mileage: item.mileage,
+            notes: item.notes
+        }
+    })),
+    ...vehicle.refueling.map(item => ({
+        id: item.id,
+        date: item.date.toISOString(),
+        type: 'REFUEL' as const,
+        data: {
+            liters: item.liters ? item.liters.toNumber() : 0,
+            cost: item.cost ? item.cost.toNumber() : 0,
+            mileage: item.mileage,
+            notes: item.notes,
+            user: { name: item.user?.name || item.user?.email || "N/D" }
+        }
+    })),
+    ...vehicle.mileageChecks.map(item => ({
+        id: item.id,
+        date: item.date.toISOString(),
+        type: 'MILEAGE_CHECK' as const,
+        data: {
+            km: item.km,
+            notes: item.notes,
+            user: { name: item.user.name || item.user.email }
+        }
+    }))
+  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
   const lastLog = vehicle.logs[0];
   const lastRefueling = vehicle.refueling[0];
+  const lastCheck = vehicle.mileageChecks[0];
 
-  const lastLogKm = lastLog?.finalKm ?? 0;
+  const lastLogKm = lastLog?.finalKm ?? lastLog?.initialKm ?? 0;
   const lastRefuelingKm = lastRefueling ? lastRefueling.mileage : 0;
   const lastMaintenanceKm = vehicle.maintenance.reduce((max, r) => Math.max(max, r.mileage), 0);
-  const lastMileage = Math.max(lastLogKm, lastRefuelingKm, lastMaintenanceKm);
+  const lastCheckKm = lastCheck ? lastCheck.km : 0;
+  
+  const lastMileage = Math.max(lastLogKm, lastRefuelingKm, lastMaintenanceKm, lastCheckKm);
 
   const totalLogs = vehicle.logs.length;
   const lastUsageDate = lastLog ? new Date(lastLog.date).toLocaleDateString("it-IT") : "Mai";
@@ -154,6 +157,7 @@ export default async function VehicleDetailPage({ params }: Props) {
           name: vehicle.name,
           type: vehicle.type,
           status: vehicle.status,
+          ownershipType: vehicle.ownershipType,
           currentAnomaly: vehicle.currentAnomaly,
           notes: vehicle.notes,
           serviceIntervalKm: vehicle.serviceIntervalKm || 15000,
@@ -165,16 +169,8 @@ export default async function VehicleDetailPage({ params }: Props) {
           lastUsageDate,
           lastUser,
         }}
-        logs={formattedLogs}
-        maintenance={formattedMaintenance}
-        refueling={formattedRefueling}
         documents={formattedDocuments}
-        activeAnomalies={activeAnomalies.map(a => ({
-            id: a.id,
-            date: a.date.toISOString(),
-            description: a.anomalyDescription || "",
-            reporter: a.user.name || "Utente"
-        }))}
+        historyItems={historyItems}
       />
     </div>
   );

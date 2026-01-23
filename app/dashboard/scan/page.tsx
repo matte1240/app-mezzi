@@ -8,8 +8,6 @@ import {
   CheckCircle,
   AlertCircle,
   QrCode,
-  Gauge,
-  MapPin,
   Clock,
   ArrowRight
 } from "lucide-react";
@@ -38,7 +36,7 @@ function ScanContent() {
   const vehicleIdParam = searchParams.get("vehicleId");
 
   const [isPending, startTransition] = useTransition();
-  const [vehicles, setVehicles] = useState<ActiveVehicle[]>([]);
+  const [, setVehicles] = useState<ActiveVehicle[]>([]);
   const [loadingVehicles, setLoadingVehicles] = useState(true);
   const [selectedVehicle, setSelectedVehicle] = useState<ActiveVehicle | null>(null);
 
@@ -50,7 +48,6 @@ function ScanContent() {
   
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [isOtherUserTrip, setIsOtherUserTrip] = useState(false);
 
   useEffect(() => {
     const fetchVehicles = async () => {

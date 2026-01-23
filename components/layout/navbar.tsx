@@ -14,6 +14,9 @@ import {
   Server,
   Users,
   Fuel,
+  Wrench,
+  FileText,
+  Car,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -78,6 +81,21 @@ export default function Navbar({
       href: "/dashboard/refueling",
       label: "Rifornimenti",
       icon: <Fuel className="w-4 h-4" />,
+    },
+    {
+      href: "/dashboard/insurances",
+      label: "Assicurazioni",
+      icon: <FileText className="w-4 h-4" />,
+    },
+    {
+      href: "/dashboard/maintenance",
+      label: "Manutenzioni",
+      icon: <Wrench className="w-4 h-4" />,
+    },
+    {
+      href: "/dashboard/rentals",
+      label: "Noleggi",
+      icon: <Car className="w-4 h-4" />,
     },
     {
       href: "/dashboard/vehicle-logs",

@@ -32,9 +32,10 @@ export async function DELETE(
             
         const filePath = path.join(process.cwd(), "public", relativePath);
         await unlink(filePath);
-    } catch(err: any) {
+    } catch(err) {
         // Ignore file not found errors, but log others
-        if (err.code !== 'ENOENT') {
+        const error = err as { code?: string };
+        if (error.code !== 'ENOENT') {
             console.error("Failed to delete file:", err);
         }
     }
