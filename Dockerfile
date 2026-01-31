@@ -93,6 +93,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# Copy custom server.js that binds to 0.0.0.0 (overrides standalone default)
+COPY --chown=nextjs:nodejs server.js ./server.js
+
 # Copy Prisma schema and migrations
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 
