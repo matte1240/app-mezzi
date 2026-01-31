@@ -13,40 +13,10 @@ COPY prisma ./prisma
 # Install ALL dependencies (including Prisma for migrations)
 RUN npm install && npm cache clean --force
 
-# Stage 2: Development
-FROM node:25-alpine AS dev
-WORKDIR /app
-
-# Install PostgreSQL client tools for migrations
-RUN apk add --no-cache postgresql16-client curl
-
-# Copy dependencies
-COPY --from=deps /app/node_modules ./node_modules
-COPY package.json package-lock.json* ./
-
-# Copy Prisma schema
-COPY prisma ./prisma
-
-# Copy dev entrypoint script
-COPY docker-entrypoint-dev.sh /usr/local/bin/docker-entrypoint.sh
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
-
-# Expose port
-EXPOSE 3000
-
-# Set development environment
-ENV NODE_ENV=development
-ENV NEXT_TELEMETRY_DISABLED=1
-ENV HOSTNAME="0.0.0.0"
-ENV PORT=3000
-
-# Set entrypoint and default command
-ENTRYPOINT ["docker-entrypoint.sh"]
-CMD ["npm", "run", "dev"]
-
-# Stage 3: Builder
+# Stage 2: Builder
 FROM node:25-alpine AS builder
 WORKDIR /app
+
 
 # Copy all dependencies from deps stage (including Prisma)
 COPY --from=deps /app/node_modules ./node_modules
