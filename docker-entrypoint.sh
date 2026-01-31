@@ -14,6 +14,9 @@ if [ "$(id -u)" = "0" ]; then
     exec su-exec nextjs "$0" "$@"
 fi
 
+echo "📂 Current directory content:"
+ls -la /app
+
 # Run Prisma migrations
 echo "🔄 Running Prisma migrations..."
 LOG_FILE=$(mktemp)

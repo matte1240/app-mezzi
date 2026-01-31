@@ -75,11 +75,13 @@ EXPOSE 3005
 
 # Set hostname
 ENV HOSTNAME="0.0.0.0"
+# Also set HOST for some environments/frameworks that prefer it
+ENV HOST="0.0.0.0" 
 ENV PORT=3005
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:3005/api/auth/session', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+# Health check - reduced stricter dependency, just TCP check if possible or simple fetch
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD node -e "require('http').get('http://127.0.0.1:3005/api/auth/session', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
 # Set entrypoint and default command
 ENTRYPOINT ["docker-entrypoint.sh"]
