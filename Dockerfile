@@ -3,7 +3,7 @@
 # ========================================
 
 # Stage 1: Dependencies
-FROM node:25-alpine AS deps
+FROM node:22-alpine AS deps
 WORKDIR /app
 
 # Copy package files and Prisma schema (needed for postinstall)
@@ -14,7 +14,7 @@ COPY prisma ./prisma
 RUN npm install && npm cache clean --force
 
 # Stage 2: Builder
-FROM node:25-alpine AS builder
+FROM node:22-alpine AS builder
 WORKDIR /app
 
 
@@ -34,7 +34,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
 # Stage 4: Runner
-FROM node:25-alpine AS runner
+FROM node:22-alpine AS runner
 WORKDIR /app
 
 # Install PostgreSQL client tools for backup/restore and su-exec for user switching
