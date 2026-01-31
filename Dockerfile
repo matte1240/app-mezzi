@@ -36,8 +36,9 @@ RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
 # Setup directories
-RUN mkdir -p /app/logs /app/backups/database /app/public/uploads && \
-    chown -R nextjs:nodejs /app/logs /app/backups /app/public/uploads
+# /app/storage will be our single volume mount point
+RUN mkdir -p /app/storage /app/logs /app/backups/database /app/public/uploads && \
+    chown -R nextjs:nodejs /app/storage /app/logs /app/backups /app/public/uploads
 
 # Copy Artifacts
 # 1. Entrypoint

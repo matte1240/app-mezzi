@@ -5,9 +5,37 @@ echo "🚀 Starting application entrypoint..."
 
 # Fix permissions if running as root
 if [ "$(id -u)" = "0" ]; then
-    echo "🔧 Fixing permissions for volumes..."
-    mkdir -p /app/public/uploads /app/logs /app/backups/database
-    chown -R nextjs:nodejs /app/public/uploads /app/logs /app/backups
+    echo "🔧 Setting up storage..."
+    
+    # Define single storage source
+    STORAGE_DIR="/app/storage"
+    mkdir -p "$STORAGE_DIR/uploads" "$STORAGE_DIR/backups" "$STORAGE_DIR/logs"
+
+    # Helper to link directories to storage
+    link_storage() {
+        APP_PATH="$1"
+        STORAGE_PATH="$2"
+        
+        # If path exists and is a real directory (not symlink), replace with link
+        if [ -d "$APP_PATH" ] && [ ! -L "$APP_PATH" ]; then
+            echo "   Moving existing contents of $APP_PATH to $STORAGE_PATH"
+            cp -r "$APP_PATH/." "$STORAGE_PATH/" 2>/dev/null || true
+            rm -rf "$APP_PATH"
+        fi
+
+        if [ ! -e "$APP_PATH" ]; then
+             mkdir -p "$(dirname "$APP_PATH")"
+             ln -s "$STORAGE_PATH" "$APP_PATH"
+             echo "🔗 Linked $APP_PATH -> $STORAGE_PATH"
+        fi
+    }
+
+    link_storage "/app/public/uploads" "$STORAGE_DIR/uploads"
+    link_storage "/app/backups" "$STORAGE_DIR/backups"
+    link_storage "/app/logs" "$STORAGE_DIR/logs"
+
+    echo "🔧 Fixing permissions for storage..."
+    chown -R nextjs:nodejs "$STORAGE_DIR"
     
     # Re-execute script as nextjs user
     echo "🔄 Switching to nextjs user..."
