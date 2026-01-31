@@ -71,15 +71,15 @@ RUN mkdir -p /app/logs /app/backups/database /app/public/uploads && \
     chown -R nextjs:nodejs /app/logs /app/backups /app/public/uploads
 
 # Expose port
-EXPOSE 3000
+EXPOSE 3005
 
 # Set hostname
 ENV HOSTNAME="0.0.0.0"
-ENV PORT=3000
+ENV PORT=3005
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:3000/api/auth/session', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
+    CMD node -e "require('http').get('http://localhost:3005/api/auth/session', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
 # Set entrypoint and default command
 ENTRYPOINT ["docker-entrypoint.sh"]
