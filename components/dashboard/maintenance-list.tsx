@@ -64,8 +64,6 @@ const TYPE_COLORS: Record<MaintenanceType, string> = {
   ALTRO: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
 };
 
-const currentYear = new Date().getFullYear();
-const yearOptions = Array.from({ length: 10 }, (_, i) => currentYear + 1 - i);
 
 const emptyForm = {
   vehicleId: "",
