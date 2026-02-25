@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // CommonJS server entry point for Docker deployments:
+    "server.js",
   ]),
 ]);
 

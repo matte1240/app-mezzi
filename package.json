@@ -25,6 +25,7 @@
     "date-fns": "^4.1.0",
     "date-holidays": "^3.26.5",
     "exceljs": "^4.4.0",
+    "geist": "^1.7.0",
     "googleapis": "^166.0.0",
     "lucide-react": "^0.555.0",
     "next": "^16.0.10",
