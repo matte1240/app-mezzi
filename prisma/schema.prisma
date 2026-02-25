@@ -22,6 +22,7 @@ model User {
   sessions      Session[]
   vehicleLogs   VehicleLog[]
   refuelingRecords RefuelingRecord[]
+  mileageChecks MileageCheck[]
 }
 
 
@@ -67,12 +68,20 @@ enum Role {
 }
 
 
+
+enum OwnershipType {
+  OWNED
+  RENTAL
+  LEASING
+}
+
 model Vehicle {
   id                String              @id @default(cuid())
   plate             String              @unique
   name              String
   type              String
   status            VehicleStatus       @default(ACTIVE)
+  ownershipType     OwnershipType       @default(OWNED)
   currentAnomaly    String?
   notes             String?
   serviceIntervalKm Int                 @default(15000)
@@ -83,6 +92,7 @@ model Vehicle {
   maintenance       MaintenanceRecord[]
   refueling         RefuelingRecord[]
   documents         VehicleDocument[]
+  mileageChecks     MileageCheck[]
 }
 
 enum VehicleStatus {
@@ -199,4 +209,21 @@ model VehicleDocument {
   vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
 
   @@index([vehicleId])
+}
+
+model MileageCheck {
+  id        String   @id @default(cuid())
+  vehicleId String
+  userId    String
+  date      DateTime
+  km        Int
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  vehicle   Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@index([userId])
 }

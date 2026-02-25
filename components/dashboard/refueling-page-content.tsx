@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect, useTransition, useCallback } from "react";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { Fuel, Download, Loader2, Plus, X, AlertCircle } from "lucide-react";
 import { VehicleSelectorMulti } from "./vehicle-selector-multi";
@@ -55,7 +55,7 @@ export default function RefuelingPageContent({ vehicles }: Props) {
   });
 
   // Fetch data
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
       const params = new URLSearchParams();
@@ -81,11 +81,11 @@ export default function RefuelingPageContent({ vehicles }: Props) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [startDate, endDate, selectedVehicleIds]);
 
   useEffect(() => {
     fetchData();
-  }, [startDate, endDate, selectedVehicleIds]);
+  }, [fetchData]);
 
   const handleExport = () => {
     const params = new URLSearchParams();

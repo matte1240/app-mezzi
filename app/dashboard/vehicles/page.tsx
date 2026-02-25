@@ -46,6 +46,16 @@ export default async function VehiclesPage() {
           mileage: true,
         },
       },
+      mileageChecks: {
+        take: 1,
+        orderBy: [
+          { date: "desc" },
+          { km: "desc" },
+        ],
+        select: {
+          km: true,
+        },
+      },
     },
   });
 
@@ -53,11 +63,12 @@ export default async function VehiclesPage() {
       const lastLogKm = v.logs[0]?.finalKm || 0;
       const lastRefuelingKm = v.refueling[0]?.mileage || 0;
       const lastMaintenanceKm = v.maintenance.reduce((max, m) => Math.max(max, m.mileage), 0);
+      const lastMileageCheckKm = v.mileageChecks[0]?.km || 0;
       const lastTagliando = v.maintenance.find(m => m.type === "TAGLIANDO");
       
       return {
         ...v,
-        lastMileage: Math.max(lastLogKm, lastRefuelingKm, lastMaintenanceKm),
+        lastMileage: Math.max(lastLogKm, lastRefuelingKm, lastMaintenanceKm, lastMileageCheckKm),
         lastServiceKm: lastTagliando?.mileage || 0,
       };
   }) as (Vehicle & { lastMileage: number; lastServiceKm: number })[];

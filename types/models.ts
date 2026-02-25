@@ -18,6 +18,7 @@ export type User = {
 
 
 export type VehicleStatus = "ACTIVE" | "MAINTENANCE" | "OUT_OF_SERVICE";
+export type OwnershipType = "OWNED" | "RENTAL" | "LEASING";
 
 export type Vehicle = {
   id: string;
@@ -25,6 +26,7 @@ export type Vehicle = {
   name: string;
   type: string;
   status: VehicleStatus;
+  ownershipType: OwnershipType;
   currentAnomaly?: string | null;
   notes?: string | null;
   serviceIntervalKm: number;
