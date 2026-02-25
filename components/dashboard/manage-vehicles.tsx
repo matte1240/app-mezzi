@@ -17,7 +17,7 @@ import {
   QrCode
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { Vehicle, VehicleStatus } from "@/types/models";
+import type { Vehicle, VehicleStatus, OwnershipType } from "@/types/models";
 
 type ManageVehiclesProps = {
   vehicles: (Vehicle & { lastMileage: number; lastServiceKm: number })[];
@@ -28,6 +28,7 @@ type VehicleForm = {
   name: string;
   type: string;
   status: VehicleStatus;
+  ownershipType: OwnershipType;
   notes: string;
   serviceIntervalKm: number;
   registrationDate: string;
@@ -38,6 +39,7 @@ const initialFormState: VehicleForm = {
   name: "",
   type: "",
   status: "ACTIVE",
+  ownershipType: "OWNED",
   notes: "",
   serviceIntervalKm: 15000,
   registrationDate: "",
@@ -169,6 +171,7 @@ export default function ManageVehicles({ vehicles }: ManageVehiclesProps) {
       name: vehicle.name,
       type: vehicle.type,
       status: vehicle.status,
+      ownershipType: vehicle.ownershipType || "OWNED",
       notes: vehicle.notes || "",
       serviceIntervalKm: vehicle.serviceIntervalKm || 15000,
       registrationDate: vehicle.registrationDate ? new Date(vehicle.registrationDate).toISOString().split('T')[0] : "",
@@ -367,9 +370,9 @@ export default function ManageVehicles({ vehicles }: ManageVehiclesProps) {
 
       {/* Create Modal */}
       {isCreateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-md rounded-xl bg-card border border-border shadow-2xl">
-            <div className="border-b border-border bg-primary px-6 py-4 rounded-t-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-md rounded-xl bg-card border border-border shadow-2xl flex flex-col max-h-[calc(100vh-2rem)] my-auto">
+            <div className="border-b border-border bg-primary px-6 py-4 rounded-t-xl flex-shrink-0">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold text-primary-foreground">Nuovo Veicolo</h2>
                 <button
@@ -381,7 +384,7 @@ export default function ManageVehicles({ vehicles }: ManageVehiclesProps) {
               </div>
             </div>
             
-            <form onSubmit={handleCreate} className="p-6 space-y-4">
+            <form onSubmit={handleCreate} className="p-6 space-y-4 overflow-y-auto">
               <div>
                 <label className="block text-sm font-semibold text-foreground mb-2">Targa</label>
                 <input
@@ -425,6 +428,18 @@ export default function ManageVehicles({ vehicles }: ManageVehiclesProps) {
                     <option value="OUT_OF_SERVICE">Fuori Servizio</option>
                   </select>
                 </div>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-2">Tipologia Acquisto</label>
+                <select
+                  className="w-full rounded-lg border border-input bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  value={formData.ownershipType}
+                  onChange={(e) => setFormData({ ...formData, ownershipType: e.target.value as OwnershipType })}
+                >
+                  <option value="OWNED">Proprietà</option>
+                  <option value="RENTAL">Noleggio</option>
+                  <option value="LEASING">Leasing</option>
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-foreground mb-2">Note</label>
@@ -481,9 +496,9 @@ export default function ManageVehicles({ vehicles }: ManageVehiclesProps) {
 
       {/* Edit Modal */}
       {editingVehicle && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-md rounded-xl bg-card border border-border shadow-2xl">
-            <div className="border-b border-border bg-primary px-6 py-4 rounded-t-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-md rounded-xl bg-card border border-border shadow-2xl flex flex-col max-h-[calc(100vh-2rem)] my-auto">
+            <div className="border-b border-border bg-primary px-6 py-4 rounded-t-xl flex-shrink-0">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold text-primary-foreground">Modifica Veicolo</h2>
                 <button
@@ -495,7 +510,7 @@ export default function ManageVehicles({ vehicles }: ManageVehiclesProps) {
               </div>
             </div>
 
-            <form onSubmit={handleUpdate} className="p-6 space-y-4">
+            <form onSubmit={handleUpdate} className="p-6 space-y-4 overflow-y-auto">
               <div>
                 <label className="block text-sm font-semibold text-foreground mb-2">Targa</label>
                 <input
@@ -536,6 +551,18 @@ export default function ManageVehicles({ vehicles }: ManageVehiclesProps) {
                     <option value="OUT_OF_SERVICE">Fuori Servizio</option>
                   </select>
                 </div>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-foreground mb-2">Tipologia Acquisto</label>
+                <select
+                  className="w-full rounded-lg border border-input bg-background px-4 py-3 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                  value={formData.ownershipType}
+                  onChange={(e) => setFormData({ ...formData, ownershipType: e.target.value as OwnershipType })}
+                >
+                  <option value="OWNED">Proprietà</option>
+                  <option value="RENTAL">Noleggio</option>
+                  <option value="LEASING">Leasing</option>
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-semibold text-foreground mb-2">Note</label>

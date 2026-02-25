@@ -18,7 +18,7 @@ export type User = {
 
 
 export type VehicleStatus = "ACTIVE" | "MAINTENANCE" | "OUT_OF_SERVICE";
-export type OwnershipType = "OWNED" | "RENTAL";
+export type OwnershipType = "OWNED" | "RENTAL" | "LEASING";
 
 export type Vehicle = {
   id: string;

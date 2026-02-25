@@ -9,21 +9,30 @@ export default async function MaintenancePage() {
         redirect("/");
     }
 
-    const maintenance = await prisma.maintenanceRecord.findMany({
-        include: { vehicle: true },
-        orderBy: { date: "desc" },
-        take: 100 // Limit for now to avoid overload
-    });
+    const [vehicles, maintenance] = await Promise.all([
+        prisma.vehicle.findMany({
+            where: { status: { not: "OUT_OF_SERVICE" } },
+            orderBy: { name: "asc" },
+            select: { id: true, plate: true, name: true },
+        }),
+        prisma.maintenanceRecord.findMany({
+            include: { vehicle: { select: { id: true, plate: true, name: true } } },
+            orderBy: { date: "desc" },
+        }),
+    ]);
 
-    const formattedMaintenance = maintenance.map(m => ({
+    const serialized = maintenance.map(m => ({
         ...m,
         cost: m.cost ? m.cost.toNumber() : null,
+        date: m.date.toISOString(),
+        createdAt: m.createdAt.toISOString(),
+        updatedAt: m.updatedAt.toISOString(),
     }));
 
     return (
         <div className="p-8 space-y-6">
             <h2 className="text-3xl font-bold tracking-tight">Registro Manutenzioni</h2>
-            <MaintenanceList items={formattedMaintenance} />
+            <MaintenanceList vehicles={vehicles} items={serialized} />
         </div>
-    )
+    );
 }

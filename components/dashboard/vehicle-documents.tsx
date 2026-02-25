@@ -10,7 +10,8 @@ import {
   Trash2,
   Download,
   AlertCircle,
-  File
+  File,
+  Edit
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -39,8 +40,18 @@ export default function VehicleDocuments({
   const [documents, setDocuments] = useState<VehicleDocument[]>(initialDocuments);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<VehicleDocument | null>(null);
+  const [editingDoc, setEditingDoc] = useState<VehicleDocument | null>(null);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+
+  // Edit form state
+  const [editFormData, setEditFormData] = useState({
+    documentType: "ALTRO" as "LIBRETTO_CIRCOLAZIONE" | "ASSICURAZIONE" | "ALTRO",
+    title: "",
+    year: "",
+    expiryDate: "",
+    notes: "",
+  });
 
   // Form state
   const [formData, setFormData] = useState({
@@ -82,6 +93,17 @@ export default function VehicleDocuments({
     setIsModalOpen(true);
   };
 
+  const openEditModal = (doc: VehicleDocument) => {
+    setEditingDoc(doc);
+    setEditFormData({
+      documentType: doc.documentType,
+      title: doc.title,
+      year: doc.year ? doc.year.toString() : "",
+      expiryDate: doc.expiryDate ? doc.expiryDate.split("T")[0] : "",
+      notes: doc.notes || "",
+    });
+  };
+
   const handleDelete = async (id: string) => {
     if (!confirm("Sei sicuro di voler eliminare questo documento permanentemente?")) return;
     
@@ -101,6 +123,41 @@ export default function VehicleDocuments({
         router.refresh();
       } catch {
         alert("Si è verificato un errore imprevisto");
+      }
+    });
+  };
+
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingDoc) return;
+    setError(null);
+
+    startTransition(async () => {
+      try {
+        const res = await fetch(`/api/documents/${editingDoc.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            documentType: editFormData.documentType,
+            title: editFormData.title || editingDoc.title,
+            year: editFormData.year ? parseInt(editFormData.year) : null,
+            expiryDate: editFormData.expiryDate || null,
+            notes: editFormData.notes || null,
+          }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          setError(data.error || "Errore durante il salvataggio");
+          return;
+        }
+
+        setDocuments(prev => prev.map(d => d.id === editingDoc.id ? { ...d, ...data } : d));
+        setEditingDoc(null);
+        router.refresh();
+      } catch {
+        setError("Si è verificato un errore imprevisto");
       }
     });
   };
@@ -213,6 +270,13 @@ export default function VehicleDocuments({
                      <Download className="h-4 w-4" />
                    </a>
                    <button
+                     onClick={() => openEditModal(doc)}
+                     className="rounded-md p-2 text-muted-foreground hover:bg-secondary hover:text-foreground transition"
+                     title="Modifica"
+                   >
+                     <Edit className="h-4 w-4" />
+                   </button>
+                   <button
                      onClick={() => handleDelete(doc.id)}
                      className="rounded-md p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition"
                      title="Elimina"
@@ -243,6 +307,128 @@ export default function VehicleDocuments({
           ))
         )}
       </div>
+
+      {/* Edit Modal */}
+      {editingDoc && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-xl bg-card shadow-xl border border-border flex flex-col max-h-[calc(100vh-2rem)] my-auto">
+            <div className="flex items-center justify-between p-6 pb-4 border-b border-border flex-shrink-0">
+              <h3 className="text-lg font-semibold text-foreground flex items-center gap-2">
+                <Edit className="h-5 w-5" />
+                Modifica Documento
+              </h3>
+              <button
+                onClick={() => { setEditingDoc(null); setError(null); }}
+                className="rounded-full p-1 hover:bg-secondary text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleUpdate} className="p-6 space-y-4 overflow-y-auto">
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Tipo di Documento *</label>
+                <select
+                  required
+                  value={editFormData.documentType}
+                  onChange={(e) => setEditFormData({ ...editFormData, documentType: e.target.value as "LIBRETTO_CIRCOLAZIONE" | "ASSICURAZIONE" | "ALTRO" })}
+                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="ALTRO">Altro</option>
+                  <option value="LIBRETTO_CIRCOLAZIONE">Libretto di circolazione</option>
+                  <option value="ASSICURAZIONE">Assicurazione</option>
+                </select>
+              </div>
+
+              {editFormData.documentType === "ASSICURAZIONE" && (
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Anno</label>
+                  <select
+                    value={editFormData.year}
+                    onChange={(e) => setEditFormData({ ...editFormData, year: e.target.value })}
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value="">— Nessun anno —</option>
+                    {Array.from({ length: 10 }, (_, i) => {
+                      const year = new Date().getFullYear() - i;
+                      return <option key={year} value={year}>{year}</option>;
+                    })}
+                  </select>
+                </div>
+              )}
+
+              {editFormData.documentType === "ALTRO" && (
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-1">Titolo Documento *</label>
+                  <input
+                    type="text"
+                    required
+                    value={editFormData.title}
+                    onChange={(e) => setEditFormData({ ...editFormData, title: e.target.value })}
+                    className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                    placeholder="Es. Certificato, Bollo, etc."
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Data Scadenza</label>
+                <input
+                  type="date"
+                  value={editFormData.expiryDate}
+                  onChange={(e) => setEditFormData({ ...editFormData, expiryDate: e.target.value })}
+                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                />
+                {editFormData.expiryDate && (
+                  <button
+                    type="button"
+                    onClick={() => setEditFormData({ ...editFormData, expiryDate: "" })}
+                    className="mt-1 text-xs text-muted-foreground hover:text-destructive transition"
+                  >
+                    Rimuovi scadenza
+                  </button>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-1">Note</label>
+                <textarea
+                  rows={3}
+                  value={editFormData.notes}
+                  onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })}
+                  className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                  placeholder="Note aggiuntive..."
+                />
+              </div>
+
+              {error && (
+                <div className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4" />
+                  {error}
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => { setEditingDoc(null); setError(null); }}
+                  className="flex-1 rounded-lg border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-secondary transition-colors"
+                >
+                  Annulla
+                </button>
+                <button
+                  type="submit"
+                  disabled={isPending}
+                  className="flex-1 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                >
+                  {isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                  Salva Modifiche
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Upload Modal */}
       {isModalOpen && (

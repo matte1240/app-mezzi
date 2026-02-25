@@ -5,10 +5,14 @@ import {
   Gauge,
   CheckCircle,
   History,
-  Car
+  Car,
+  Fuel,
+  Wrench
 } from "lucide-react";
 import VehicleHistoryTimeline, { TimelineItem } from "./vehicle-history-timeline";
 import VehicleMileageCheckModal from "./vehicle-mileage-check-modal";
+import VehicleRefuelingModal from "./vehicle-refueling-modal";
+import VehicleMaintenanceModal from "./vehicle-maintenance-modal";
 import VehicleDocuments from "./vehicle-documents";
 import type { VehicleStatus } from "@/types/models";
 import type { OwnershipType } from "@prisma/client";
@@ -58,6 +62,8 @@ export default function VehicleDetailsView({
   documents,
 }: VehicleDetailsViewProps) {
   const [isMileageModalOpen, setIsMileageModalOpen] = useState(false);
+  const [isRefuelingModalOpen, setIsRefuelingModalOpen] = useState(false);
+  const [isMaintenanceModalOpen, setIsMaintenanceModalOpen] = useState(false);
 
   const statusColors = {
     ACTIVE: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
@@ -88,6 +94,9 @@ export default function VehicleDetailsView({
                  </Badge>
                  {vehicle.ownershipType === 'RENTAL' && (
                      <Badge variant="secondary">Noleggio</Badge>
+                 )}
+                 {vehicle.ownershipType === 'LEASING' && (
+                     <Badge variant="secondary">Leasing</Badge>
                  )}
               </div>
               <p className="text-xs text-muted-foreground mt-1">{vehicle.name}</p>
@@ -121,10 +130,18 @@ export default function VehicleDetailsView({
          </Card>
 
          <Card className="bg-muted/10 border-dashed">
-            <CardContent className="pt-6 flex items-center justify-center h-full">
-                <Button onClick={() => setIsMileageModalOpen(true)} className="w-full h-full min-h-[60px]" variant="outline">
-                    <CheckCircle className="mr-2 h-5 w-5" />
+            <CardContent className="pt-4 flex flex-col gap-2 justify-center h-full">
+                <Button onClick={() => setIsMileageModalOpen(true)} className="w-full" variant="outline" size="sm">
+                    <CheckCircle className="mr-2 h-4 w-4" />
                     Registra Controllo Km
+                </Button>
+                <Button onClick={() => setIsRefuelingModalOpen(true)} className="w-full" variant="outline" size="sm">
+                    <Fuel className="mr-2 h-4 w-4" />
+                    Registra Rifornimento
+                </Button>
+                <Button onClick={() => setIsMaintenanceModalOpen(true)} className="w-full" variant="outline" size="sm">
+                    <Wrench className="mr-2 h-4 w-4" />
+                    Registra Manutenzione
                 </Button>
             </CardContent>
          </Card>
@@ -162,6 +179,18 @@ export default function VehicleDetailsView({
         isOpen={isMileageModalOpen} 
         onClose={() => setIsMileageModalOpen(false)} 
         vehicleId={vehicle.id} 
+      />
+      <VehicleRefuelingModal
+        isOpen={isRefuelingModalOpen}
+        onClose={() => setIsRefuelingModalOpen(false)}
+        vehicleId={vehicle.id}
+        currentMileage={stats.lastMileage}
+      />
+      <VehicleMaintenanceModal
+        isOpen={isMaintenanceModalOpen}
+        onClose={() => setIsMaintenanceModalOpen(false)}
+        vehicleId={vehicle.id}
+        currentMileage={stats.lastMileage}
       />
     </div>
   );

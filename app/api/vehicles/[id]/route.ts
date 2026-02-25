@@ -14,6 +14,7 @@ const updateVehicleSchema = z.object({
   name: z.string().min(1, "Il nome è obbligatorio"),
   type: z.string().min(1, "Il tipo è obbligatorio"),
   status: z.enum(["ACTIVE", "MAINTENANCE", "OUT_OF_SERVICE"]),
+  ownershipType: z.enum(["OWNED", "RENTAL", "LEASING"]).default("OWNED"),
   notes: z.string().optional(),
   serviceIntervalKm: z.number().int().positive().default(15000),
   registrationDate: z.string().optional().nullable(),
@@ -35,7 +36,7 @@ export async function PUT(
       return badRequestResponse(validation.error.issues[0].message);
     }
 
-    const { plate, name, type, status, notes, serviceIntervalKm, registrationDate } = validation.data;
+    const { plate, name, type, status, ownershipType, notes, serviceIntervalKm, registrationDate } = validation.data;
 
     const existingVehicle = await prisma.vehicle.findUnique({
       where: { id },
@@ -61,6 +62,7 @@ export async function PUT(
         name,
         type,
         status,
+        ownershipType,
         notes,
         serviceIntervalKm,
         registrationDate: registrationDate ? new Date(registrationDate) : null,
